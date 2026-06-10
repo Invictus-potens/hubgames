@@ -1,0 +1,2 @@
+# hubgames
+registro para jogos
