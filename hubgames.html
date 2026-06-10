@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameVault | Gerenciador de Jogos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="min-h-screen pb-20">
+
+    <!-- Header / Navbar -->
+    <nav class="p-6 border-b border-gray-800 flex justify-between items-center glass sticky top-0 z-50">
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-red-500 to-purple-600 bg-clip-text text-transparent">
+            GAMEVAULT
+        </h1>
+        <button onclick="openModal()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-all">
+            + Adicionar Jogo
+        </button>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        
+        <!-- SECTION: CALENDÁRIO DE ESTREIAS (Estilo Opera GX) -->
+        <section class="mb-12">
+            <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                <span class="w-2 h-6 bg-red-600 rounded-full"></span>
+                Calendário de Estreias
+            </h2>
+            <div id="releaseCalendar" class="flex gap-4 overflow-x-auto pb-4 custom-scroll">
+                <!-- Cards de lançamentos injetados aqui -->
+            </div>
+        </section>
+
+        <!-- SECTION: FILTROS E CATEGORIAS -->
+        <section>
+            <div class="flex flex-wrap gap-4 mb-8 border-b border-gray-800 pb-4">
+                <button onclick="filterGames('all')" class="category-btn active text-red-500 font-bold">Todos</button>
+                <button onclick="filterGames('playing')" class="category-btn hover:text-red-400 transition">Estou Jogando</button>
+                <button onclick="filterGames('played')" class="category-btn hover:text-red-400 transition">Já Joguei</button>
+                <button onclick="filterGames('old')" class="category-btn hover:text-red-400 transition">Jogos Antigos</button>
+                <button onclick="filterGames('new')" class="category-btn hover:text-red-400 transition">Novos Adquiridos</button>
+                <button onclick="filterGames('fav')" class="category-btn hover:text-red-400 transition">⭐ Favoritos</button>
+            </div>
+
+            <!-- GRID DE JOGOS -->
+            <div id="gamesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Jogos da biblioteca injetados aqui -->
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL PARA ADICIONAR/EDITAR JOGO -->
+    <div id="gameModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 modal-overlay" onclick="if(event.target===this)closeModal()">
+        <div class="glass w-full max-w-md p-8 rounded-2xl border border-gray-700 shadow-2xl modal-box" onclick="event.stopPropagation()">
+            <h3 id="modalTitle" class="text-2xl font-bold mb-6">Cadastrar Novo Jogo</h3>
+            <form id="gameForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Título do Jogo</label>
+                    <input type="text" id="gameTitle" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 outline-none focus:border-red-500 transition">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Status/Categoria</label>
+                        <select id="gameCategory" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 outline-none">
+                            <option value="playing">Estou Jogando</option>
+                            <option value="played">Já Joguei</option>
+                            <option value="old">Jogos Antigos</option>
+                            <option value="new">Novos Adquiridos</option>
+                            <option value="release">Apenas Calendário</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Data (Lançamento)</label>
+                        <input type="date" id="gameDate" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 outline-none focus:border-red-500 transition">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Notas Pessoais</label>
+                    <textarea id="gameNotes" rows="3" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 outline-none focus:border-red-500 transition"></textarea>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="gameFav">
+                    <label for="gameFav">Marcar como Favorito</label>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeModal()" class="px-6 py-2 text-gray-400 hover:text-white transition">Cancelar</button>
+                    <button type="submit" class="bg-red-600 px-6 py-2 rounded-lg font-bold hover:bg-red-700 transition">Salvar Jogo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO -->
+    <div id="deleteModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 modal-overlay" onclick="if(event.target===this)closeDeleteModal()">
+        <div class="glass w-full max-w-sm p-8 rounded-2xl border border-gray-700 shadow-2xl modal-box text-center" onclick="event.stopPropagation()">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
+                <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold mb-2">Remover Jogo</h3>
+            <p id="deleteGameName" class="text-gray-400 mb-6">Tem certeza que deseja remover este jogo?</p>
+            <div class="flex justify-center gap-3">
+                <button onclick="closeDeleteModal()" class="px-6 py-2.5 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-800 transition font-semibold">Cancelar</button>
+                <button id="confirmDeleteBtn" class="px-6 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition font-bold">Sim, Remover</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script externo -->
+    <script src="app.js"></script>
+</body>
+</html>

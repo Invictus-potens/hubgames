@@ -1,0 +1,89 @@
+/* ===========================
+   GameVault | Estilos Globais
+   =========================== */
+
+/* --- Reset e Base --- */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #0b0e14;
+    color: #e2e8f0;
+}
+
+/* --- Custom Scrollbar --- */
+.custom-scroll::-webkit-scrollbar {
+    height: 6px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+    background: #1a202c;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+    background: #4a5568;
+    border-radius: 10px;
+}
+
+/* --- Cards (Estilo Opera GX) --- */
+.gx-card:hover {
+    transform: translateY(-5px);
+    transition: all 0.3s ease;
+    border-color: #ff0050;
+}
+
+/* --- Glassmorphism --- */
+.glass {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* --- Modal: Animações --- */
+.modal-overlay {
+    animation: fadeIn 0.25s ease;
+    transition: opacity 0.25s ease;
+}
+
+.modal-box {
+    animation: slideUp 0.3s ease;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.modal-overlay.closing {
+    opacity: 0;
+}
+
+.modal-overlay.closing .modal-box {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- Botões de Ícone --- */
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+    transform: scale(1.1);
+}
