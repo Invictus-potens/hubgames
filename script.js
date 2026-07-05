@@ -26,12 +26,16 @@ function renderGames(filter = 'all') {
 
     filtered.forEach(game => {
         const categoryLabels = { playing: 'Jogando', played: 'Já Joguei', old: 'Antigo', new: 'Novo', release: 'Calendário' };
+        const playtimeBadge = game.playtimeForever != null
+            ? `<p class="text-xs text-gray-500 mb-2">${(game.playtimeForever / 60).toFixed(1)}h jogadas${game.playtime2Weeks ? ` · ${(game.playtime2Weeks / 60).toFixed(1)}h nas últimas 2 semanas` : ''}</p>`
+            : '';
         const card = `
             <div class="glass p-4 rounded-xl group relative gx-card border border-gray-800 cursor-default">
                 <img src="${game.cover || 'https://via.placeholder.com/300x400?text=Sem+Capa'}" class="w-full h-48 object-cover rounded-lg mb-4 shadow-lg">
                 ${game.favorite ? '<span class="absolute top-6 right-6 text-yellow-400 text-xl drop-shadow-lg">★</span>' : ''}
                 <h4 class="font-bold text-lg mb-1 truncate">${game.title}</h4>
                 <p class="text-xs text-gray-500 mb-3 uppercase tracking-widest">${categoryLabels[game.category] || game.category}</p>
+                ${playtimeBadge}
                 <p class="text-sm text-gray-400 line-clamp-2 italic">"${game.notes || 'Sem notas...'}"</p>
                 <div class="mt-4 flex justify-end gap-2">
                     <button onclick="editGame(${game.id})" class="btn-icon bg-blue-500/10 hover:bg-blue-500/25" title="Editar">
@@ -187,6 +191,100 @@ function closeModal() {
     }, 250);
 }
 
+// --- AUTENTICAÇÃO STEAM ---
+async function loadSteamUser() {
+    const loginScreen = document.getElementById('loginScreen');
+    const appShell = document.getElementById('appShell');
+    const steamAuthArea = document.getElementById('steamAuthArea');
+
+    try {
+        const res = await fetch('/api/user');
+        const { user } = await res.json();
+
+        if (user) {
+            loginScreen.classList.add('hidden');
+            appShell.classList.remove('hidden');
+            steamAuthArea.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <img src="${user.photos?.[2]?.value || user.photos?.[0]?.value || ''}" class="w-8 h-8 rounded-full border border-gray-700">
+                    <span class="text-sm font-semibold">${user.displayName}</span>
+                    <button onclick="logoutSteam()" class="text-xs text-gray-400 hover:text-red-400 transition">Sair</button>
+                </div>
+            `;
+            importSteamLibrary();
+        } else {
+            appShell.classList.add('hidden');
+            loginScreen.classList.remove('hidden');
+        }
+    } catch (err) {
+        // Backend indisponível (ex: abrindo o HTML direto sem o servidor rodando)
+        loginScreen.querySelector('p').textContent = 'Não foi possível conectar ao servidor. Rode o app via "docker compose up" ou "npm start".';
+    }
+}
+
+async function logoutSteam() {
+    await fetch('/api/logout', { method: 'POST' });
+    loadSteamUser();
+}
+
+// --- BIBLIOTECA STEAM ---
+function showLibraryWarning(message) {
+    const warning = document.getElementById('libraryWarning');
+    if (!message) {
+        warning.classList.add('hidden');
+        warning.textContent = '';
+        return;
+    }
+    warning.textContent = message;
+    warning.classList.remove('hidden');
+}
+
+async function importSteamLibrary() {
+    try {
+        const res = await fetch('/api/library');
+        if (!res.ok) {
+            showLibraryWarning('Não foi possível buscar sua biblioteca da Steam agora. Tente recarregar a página em instantes.');
+            return;
+        }
+        const { games: steamGames } = await res.json();
+
+        if (steamGames.length === 0) {
+            showLibraryWarning('Nenhum jogo encontrado na sua conta Steam. Se você tem jogos na biblioteca, verifique se seu perfil Steam está público (Perfil > Editar Perfil > Privacidade > "Detalhes do jogo").');
+            return;
+        }
+
+        showLibraryWarning(null);
+
+        steamGames.forEach(sg => {
+            const id = `steam-${sg.appid}`;
+            const existing = games.find(g => g.id === id);
+
+            if (existing) {
+                existing.playtimeForever = sg.playtime_forever;
+                existing.playtime2Weeks = sg.playtime_2weeks;
+            } else {
+                games.push({
+                    id,
+                    title: sg.name,
+                    category: sg.playtime_2weeks > 0 ? 'playing' : 'played',
+                    date: '',
+                    cover: `https://cdn.cloudflare.steamstatic.com/steam/apps/${sg.appid}/header.jpg`,
+                    notes: '',
+                    favorite: false,
+                    appid: sg.appid,
+                    playtimeForever: sg.playtime_forever,
+                    playtime2Weeks: sg.playtime_2weeks
+                });
+            }
+        });
+
+        saveData();
+    } catch (err) {
+        // Perfil privado ou API da Steam indisponível: mantém os jogos já salvos localmente
+    }
+}
+
 // --- INICIALIZAÇÃO ---
 renderGames();
 renderCalendar();
+loadSteamUser();
