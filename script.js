@@ -24,6 +24,7 @@ async function loadStats() {
     document.getElementById('statTotalGames').textContent = stats.totalGames;
     document.getElementById('statCompleted').textContent = stats.gamesCompleted;
     document.getElementById('statPlaying').textContent = stats.gamesPlaying;
+    document.getElementById('statBacklog').textContent = stats.gamesBacklog ?? 0;
 
     const recentActivity = document.getElementById('recentActivity');
 
@@ -100,7 +101,8 @@ function renderGames(filter = 'all', keepPage = false) {
     const filtered = games.filter(g => {
         if (filter === 'all' && g.category === 'release') return false;
         if (filter === 'fav' && !g.favorite) return false;
-        if (filter !== 'all' && filter !== 'fav' && g.category !== filter) return false;
+        if (filter === 'completed' && !g.completed) return false;
+        if (filter !== 'all' && filter !== 'fav' && filter !== 'completed' && g.category !== filter) return false;
         if (searchText && !g.title.toLowerCase().includes(searchText)) return false;
         if (genreValue && !(g.genre || '').split(',').map(x => x.trim()).includes(genreValue)) return false;
         if (yearValue && (!g.date || !g.date.startsWith(yearValue))) return false;
@@ -113,7 +115,7 @@ function renderGames(filter = 'all', keepPage = false) {
     }
 
     const cards = filtered.slice(0, visibleCount).map(game => {
-        const categoryLabels = { playing: 'Jogando', played: 'Já Joguei', old: 'Antigo', new: 'Novo', release: 'Calendário' };
+        const categoryLabels = { playing: 'Jogando', played: 'Já Joguei', backlog: 'Backlog', old: 'Antigo', new: 'Novo', release: 'Calendário' };
         const playtimeBadge = game.playtimeForever != null
             ? `<p class="text-xs text-gray-500 mb-2">${(game.playtimeForever / 60).toFixed(1)}h jogadas${game.playtime2Weeks ? ` · ${(game.playtime2Weeks / 60).toFixed(1)}h nas últimas 2 semanas` : ''}</p>`
             : '';
@@ -121,7 +123,7 @@ function renderGames(filter = 'all', keepPage = false) {
             <div class="glass p-4 rounded-xl group relative gx-card border border-gray-800 cursor-default">
                 <img src="${game.cover || 'https://via.placeholder.com/300x400?text=Sem+Capa'}" loading="lazy" class="w-full h-48 object-cover rounded-lg mb-4 shadow-lg">
                 ${game.favorite ? '<span class="absolute top-6 right-6 text-yellow-400 text-xl drop-shadow-lg">★</span>' : ''}
-                <h4 class="font-bold text-lg mb-1 truncate">${game.title}</h4>
+                <h4 class="font-bold text-lg mb-1 truncate">${game.completed ? '<span class="text-green-400" title="Completado">✔</span> ' : ''}${game.title}</h4>
                 <p class="text-xs text-gray-500 mb-3 uppercase tracking-widest">${categoryLabels[game.category] || game.category}</p>
                 ${playtimeBadge}
                 ${game.genre ? `<p class="text-xs text-gray-500 mb-2">${game.genre}${game.metacritic ? ` · ★ ${game.metacritic}` : ''}</p>` : ''}
@@ -201,7 +203,8 @@ gameForm.onsubmit = async (e) => {
         category: document.getElementById('gameCategory').value,
         date: document.getElementById('gameDate').value,
         notes: document.getElementById('gameNotes').value,
-        favorite: document.getElementById('gameFav').checked
+        favorite: document.getElementById('gameFav').checked,
+        completed: document.getElementById('gameCompleted').checked
     };
 
     if (editingId) {
@@ -235,6 +238,7 @@ function editGame(id) {
     document.getElementById('gameDate').value = game.date || '';
     document.getElementById('gameNotes').value = game.notes || '';
     document.getElementById('gameFav').checked = game.favorite || false;
+    document.getElementById('gameCompleted').checked = game.completed || false;
 
     openModal();
 }
@@ -295,8 +299,15 @@ async function openAchievements(gameId) {
             return;
         }
 
-        const { achievements, unlocked, total } = await res.json();
+        const { achievements, unlocked, total, completed } = await res.json();
         progress.textContent = total > 0 ? `${unlocked} de ${total} desbloqueadas (${Math.round((unlocked / total) * 100)}%)` : 'Este jogo não possui conquistas.';
+
+        // Backend auto-marca completado ao detectar 100% — reflete no estado local
+        if (completed && !game.completed) {
+            game.completed = true;
+            renderGames(currentFilter, true);
+            loadStats();
+        }
 
         list.innerHTML = achievements.map(a => `
             <div class="flex items-center gap-3 p-2 rounded-lg ${a.achieved ? 'bg-purple-500/10' : 'bg-gray-800/40 opacity-60'}">
@@ -366,6 +377,44 @@ function closeMetadataModal() {
     document.body.style.overflow = '';
 }
 
+// --- NOTÍCIAS ---
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text ?? '';
+    return div.innerHTML;
+}
+
+async function loadNews() {
+    const feed = document.getElementById('newsFeed');
+    try {
+        const res = await fetch('/api/news');
+        if (!res.ok) { feed.innerHTML = ''; return; }
+        const { news } = await res.json();
+
+        if (news.length === 0) {
+            feed.innerHTML = '<p class="text-gray-500 text-sm">Nenhuma notícia recente dos seus jogos (marque jogos como "Jogando", "Backlog" ou favoritos para ver notícias deles).</p>';
+            return;
+        }
+
+        feed.innerHTML = news.map(n => {
+            const date = new Date(n.date * 1000).toLocaleDateString('pt-BR');
+            const inner = `
+                <img src="${escapeHtml(n.cover || 'https://via.placeholder.com/280x112?text=Sem+Capa')}" loading="lazy" class="w-full h-28 object-cover">
+                <div class="p-3">
+                    <p class="text-xs text-red-400 font-bold truncate">${escapeHtml(n.gameTitle)}</p>
+                    <p class="text-sm font-semibold line-clamp-2 mt-1">${escapeHtml(n.title)}</p>
+                    <p class="text-xs text-gray-400 line-clamp-2 mt-1">${escapeHtml(n.contents)}</p>
+                    <p class="text-xs text-gray-500 mt-2">${date}${n.feedlabel ? ` · ${escapeHtml(n.feedlabel)}` : ''}</p>
+                </div>`;
+            return n.url
+                ? `<a href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer" class="min-w-[280px] max-w-[280px] gx-card border border-gray-800 rounded-lg overflow-hidden glass block">${inner}</a>`
+                : `<div class="min-w-[280px] max-w-[280px] gx-card border border-gray-800 rounded-lg overflow-hidden glass">${inner}</div>`;
+        }).join('');
+    } catch (err) {
+        feed.innerHTML = '';
+    }
+}
+
 // --- INTERFACE E NAVEGAÇÃO ---
 
 function filterGames(category) {
@@ -413,6 +462,7 @@ async function loadSteamUser() {
                 </div>
             `;
             await loadGames();
+            loadNews();
             importSteamLibrary();
         } else {
             appShell.classList.add('hidden');

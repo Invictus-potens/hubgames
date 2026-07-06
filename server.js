@@ -99,8 +99,9 @@ app.get('/api/stats', requireAuth, async (req, res) => {
     const games = await prisma.game.findMany({ where: { userId: dbUser.id } });
 
     const totalMinutes = games.reduce((sum, g) => sum + (g.playtimeForever || 0), 0);
-    const gamesCompleted = games.filter(g => g.category === 'played').length;
+    const gamesCompleted = games.filter(g => g.completed).length;
     const gamesPlaying = games.filter(g => g.category === 'playing').length;
+    const gamesBacklog = games.filter(g => g.category === 'backlog').length;
 
     const recentActivity = games
         .filter(g => (g.playtime2Weeks || 0) > 0)
@@ -113,13 +114,14 @@ app.get('/api/stats', requireAuth, async (req, res) => {
         totalGames: games.length,
         gamesCompleted,
         gamesPlaying,
+        gamesBacklog,
         recentActivity
     });
 });
 
 app.post('/api/games', requireAuth, async (req, res) => {
     const dbUser = await getDbUser(req);
-    const { title, category, date, notes, favorite } = req.body;
+    const { title, category, date, notes, favorite, completed } = req.body;
     const game = await prisma.game.create({
         data: {
             userId: dbUser.id,
@@ -127,7 +129,8 @@ app.post('/api/games', requireAuth, async (req, res) => {
             category: category || 'new',
             date: date || null,
             notes: notes || null,
-            favorite: !!favorite
+            favorite: !!favorite,
+            completed: !!completed
         }
     });
     res.status(201).json(game);
@@ -136,14 +139,14 @@ app.post('/api/games', requireAuth, async (req, res) => {
 app.put('/api/games/:id', requireAuth, async (req, res) => {
     const dbUser = await getDbUser(req);
     const id = Number(req.params.id);
-    const { title, category, date, notes, favorite } = req.body;
+    const { title, category, date, notes, favorite, completed } = req.body;
 
     const existing = await prisma.game.findUnique({ where: { id } });
     if (!existing || existing.userId !== dbUser.id) return res.status(404).json({ error: 'not_found' });
 
     const game = await prisma.game.update({
         where: { id },
-        data: { title, category, date: date || null, notes: notes || null, favorite: !!favorite }
+        data: { title, category, date: date || null, notes: notes || null, favorite: !!favorite, completed: !!completed }
     });
     res.json(game);
 });
@@ -311,10 +314,71 @@ app.get('/api/games/:id/achievements', requireAuth, async (req, res) => {
         }).sort((a, b) => Number(b.achieved) - Number(a.achieved));
 
         const unlocked = achievements.filter(a => a.achieved).length;
+        const total = achievements.length;
 
-        res.json({ achievements, unlocked, total: achievements.length });
+        // 100% de conquistas marca como completado automaticamente (nunca desmarca)
+        let completed = game.completed;
+        if (total > 0 && unlocked === total && !game.completed) {
+            await prisma.game.update({ where: { id }, data: { completed: true } });
+            completed = true;
+        }
+
+        res.json({ achievements, unlocked, total, completed });
     } catch (err) {
         res.status(502).json({ error: 'steam_api_error' });
+    }
+});
+
+const NEWS_CACHE_TTL = 30 * 60 * 1000;
+const newsCache = new Map();
+
+async function getAppNews(appid) {
+    const cached = newsCache.get(appid);
+    if (cached && Date.now() - cached.fetchedAt < NEWS_CACHE_TTL) return cached.items;
+
+    const url = `https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=${appid}&count=3&maxlength=300&format=json`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    const items = (data.appnews?.newsitems || []).map(n => ({
+        gid: n.gid,
+        title: n.title,
+        url: /^https?:\/\//.test(n.url || '') ? n.url : null,
+        // Steam devolve BBCode/HTML misturado no corpo — vira texto puro
+        contents: (n.contents || '').replace(/\[[^\]]*\]/g, '').replace(/<[^>]*>/g, '').trim(),
+        feedlabel: n.feedlabel,
+        date: n.date
+    }));
+
+    newsCache.set(appid, { items, fetchedAt: Date.now() });
+    return items;
+}
+
+app.get('/api/news', requireAuth, async (req, res) => {
+    const dbUser = await getDbUser(req);
+    const games = await prisma.game.findMany({
+        where: {
+            userId: dbUser.id,
+            appid: { not: null },
+            OR: [{ category: 'playing' }, { category: 'backlog' }, { favorite: true }]
+        },
+        take: 15
+    });
+
+    try {
+        const perGame = await Promise.all(games.map(async g => {
+            try {
+                const items = await getAppNews(g.appid);
+                return items.map(n => ({ ...n, gameTitle: g.title, cover: g.cover, appid: g.appid }));
+            } catch (err) {
+                return [];
+            }
+        }));
+
+        const news = perGame.flat().sort((a, b) => b.date - a.date).slice(0, 30);
+        res.json({ news });
+    } catch (err) {
+        res.status(502).json({ error: 'steam_news_error' });
     }
 });
 

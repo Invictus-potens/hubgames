@@ -26,6 +26,7 @@ model Game {
   cover           String?
   notes           String?
   favorite        Boolean  @default(false)
+  completed       Boolean  @default(false)
   appid           Int?
   playtimeForever Int?
   playtime2Weeks  Int?
