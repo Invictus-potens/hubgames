@@ -10,6 +10,6 @@ RUN npm install --omit=dev
 
 COPY . .
 
-EXPOSE 3000
+EXPOSE 3422
 
 CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]

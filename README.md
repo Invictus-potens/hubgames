@@ -11,8 +11,8 @@ registro para jogos
    docker compose up --build
    ```
 
-   O serviço `postgres` sobe primeiro; o serviço `hubgames` aguarda o banco ficar saudável, aplica as migrations do Prisma (`prisma migrate deploy`) e então inicia o servidor Express na porta 3000.
-3. Acesse `http://localhost:3000`.
+   O serviço `postgres` sobe primeiro; o serviço `hubgames` aguarda o banco ficar saudável, aplica as migrations do Prisma (`prisma migrate deploy`) e então inicia o servidor Express na porta 3422.
+3. Acesse `http://localhost:3422`.
 
 ## Persistência
 

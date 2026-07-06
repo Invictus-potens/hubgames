@@ -19,7 +19,7 @@ if (!DATABASE_URL) {
 }
 
 const isProd = NODE_ENV === 'production';
-const baseUrl = isProd ? `https://${STEAM_DOMAIN}` : `http://localhost:${PORT || 3000}`;
+const baseUrl = isProd ? `https://${STEAM_DOMAIN}` : `http://localhost:${PORT || 3422}`;
 
 const prisma = new PrismaClient();
 const pgPool = new Pool({ connectionString: DATABASE_URL });
@@ -315,5 +315,5 @@ app.post('/api/logout', (req, res) => {
 
 app.use(express.static(path.join(__dirname)));
 
-const port = PORT || 3000;
+const port = PORT || 3422;
 app.listen(port, () => console.log(`GameVault rodando na porta ${port}`));
