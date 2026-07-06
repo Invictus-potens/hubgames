@@ -26,15 +26,17 @@ async function loadStats() {
     document.getElementById('statPlaying').textContent = stats.gamesPlaying;
 
     const recentActivity = document.getElementById('recentActivity');
-    recentActivity.innerHTML = '';
 
-    if (stats.recentActivity.length === 0) return;
+    if (stats.recentActivity.length === 0) {
+        recentActivity.innerHTML = '';
+        return;
+    }
 
     const maxHours = Math.max(...stats.recentActivity.map(a => a.hours2Weeks));
 
-    stats.recentActivity.forEach(a => {
+    const bars = stats.recentActivity.map(a => {
         const barWidth = maxHours > 0 ? Math.max(4, Math.round((a.hours2Weeks / maxHours) * 100)) : 0;
-        recentActivity.innerHTML += `
+        return `
             <div class="flex items-center gap-3">
                 <span class="text-xs text-gray-400 w-32 truncate shrink-0">${a.title}</span>
                 <div class="flex-1 h-3 bg-gray-800 rounded-full overflow-hidden">
@@ -44,6 +46,8 @@ async function loadStats() {
             </div>
         `;
     });
+
+    recentActivity.innerHTML = bars.join('');
 }
 
 const gameForm = document.getElementById('gameForm');
@@ -95,9 +99,10 @@ function renderGames(filter = 'all') {
 
     if (filtered.length === 0) {
         gamesGrid.innerHTML = `<p class="col-span-full text-gray-500 text-center py-10">Nenhum jogo encontrado nesta categoria.</p>`;
+        return;
     }
 
-    filtered.forEach(game => {
+    const cards = filtered.map(game => {
         const categoryLabels = { playing: 'Jogando', played: 'Já Joguei', old: 'Antigo', new: 'Novo', release: 'Calendário' };
         const playtimeBadge = game.playtimeForever != null
             ? `<p class="text-xs text-gray-500 mb-2">${(game.playtimeForever / 60).toFixed(1)}h jogadas${game.playtime2Weeks ? ` · ${(game.playtime2Weeks / 60).toFixed(1)}h nas últimas 2 semanas` : ''}</p>`
@@ -131,8 +136,10 @@ function renderGames(filter = 'all') {
                 </div>
             </div>
         `;
-        gamesGrid.innerHTML += card;
+        return card;
     });
+
+    gamesGrid.innerHTML = cards.join('');
 }
 
 function renderCalendar() {
@@ -140,12 +147,12 @@ function renderCalendar() {
     // Filtra jogos que possuem data, independente da categoria
     const releases = games.filter(g => g.date).sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    releases.forEach(game => {
+    const cards = releases.map(game => {
         const dateObj = new Date(game.date + 'T00:00:00');
         const day = dateObj.getDate().toString().padStart(2, '0');
         const month = dateObj.toLocaleString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
 
-        const card = `
+        return `
             <div class="min-w-[160px] max-w-[160px] gx-card border border-gray-800 rounded-lg overflow-hidden glass cursor-pointer">
                 <img src="${game.cover || 'https://via.placeholder.com/160x200?text=Cover'}" class="w-full h-40 object-cover">
                 <div class="p-3 text-center bg-black/40">
@@ -154,8 +161,9 @@ function renderCalendar() {
                 </div>
             </div>
         `;
-        releaseCalendar.innerHTML += card;
     });
+
+    releaseCalendar.innerHTML = cards.join('');
 }
 
 // --- OPERAÇÕES CRUD ---
