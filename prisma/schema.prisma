@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  steamId     String   @unique
+  displayName String
+  avatar      String?
+  createdAt   DateTime @default(now())
+  games       Game[]
+}
+
+model Game {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  category        String   @default("new")
+  date            String?
+  cover           String?
+  notes           String?
+  favorite        Boolean  @default(false)
+  appid           Int?
+  playtimeForever Int?
+  playtime2Weeks  Int?
+  genre           String?
+  synopsis        String?
+  metacritic      Int?
+  screenshots     String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, appid])
+}

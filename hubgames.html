@@ -42,6 +42,33 @@
 
             <div id="libraryWarning" class="hidden mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-600/40 text-yellow-400 text-sm"></div>
 
+            <!-- SECTION: DASHBOARD PESSOAL -->
+            <section class="mb-12">
+                <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                    <span class="w-2 h-6 bg-red-600 rounded-full"></span>
+                    Meu Dashboard
+                </h2>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="glass p-4 rounded-xl border border-gray-800 text-center">
+                        <p id="statTotalHours" class="text-2xl font-black text-red-500">0h</p>
+                        <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Horas Jogadas</p>
+                    </div>
+                    <div class="glass p-4 rounded-xl border border-gray-800 text-center">
+                        <p id="statTotalGames" class="text-2xl font-black text-red-500">0</p>
+                        <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Jogos na Coleção</p>
+                    </div>
+                    <div class="glass p-4 rounded-xl border border-gray-800 text-center">
+                        <p id="statCompleted" class="text-2xl font-black text-red-500">0</p>
+                        <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Completados</p>
+                    </div>
+                    <div class="glass p-4 rounded-xl border border-gray-800 text-center">
+                        <p id="statPlaying" class="text-2xl font-black text-red-500">0</p>
+                        <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Jogando Agora</p>
+                    </div>
+                </div>
+                <div id="recentActivity" class="space-y-3"></div>
+            </section>
+
             <!-- SECTION: CALENDÁRIO DE ESTREIAS (Estilo Opera GX) -->
             <section class="mb-12">
                 <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
@@ -55,6 +82,18 @@
 
             <!-- SECTION: FILTROS E CATEGORIAS -->
             <section>
+                <div class="flex flex-wrap gap-4 mb-6">
+                    <input id="searchInput" type="text" placeholder="Buscar por nome..." oninput="renderGames(currentFilter)"
+                        class="flex-1 min-w-[200px] bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none focus:border-red-500 transition">
+                    <select id="genreFilter" onchange="renderGames(currentFilter)"
+                        class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none focus:border-red-500 transition">
+                        <option value="">Todos os gêneros</option>
+                    </select>
+                    <select id="yearFilter" onchange="renderGames(currentFilter)"
+                        class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none focus:border-red-500 transition">
+                        <option value="">Todos os anos</option>
+                    </select>
+                </div>
                 <div class="flex flex-wrap gap-4 mb-8 border-b border-gray-800 pb-4">
                     <button onclick="filterGames('all')" class="category-btn active text-red-500 font-bold">Todos</button>
                     <button onclick="filterGames('playing')" class="category-btn hover:text-red-400 transition">Estou Jogando</button>
@@ -127,6 +166,29 @@
             <div class="flex justify-center gap-3">
                 <button onclick="closeDeleteModal()" class="px-6 py-2.5 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-800 transition font-semibold">Cancelar</button>
                 <button id="confirmDeleteBtn" class="px-6 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition font-bold">Sim, Remover</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONQUISTAS -->
+    <div id="achievementsModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 modal-overlay" onclick="if(event.target===this)closeAchievementsModal()">
+        <div class="glass w-full max-w-lg max-h-[80vh] flex flex-col p-8 rounded-2xl border border-gray-700 shadow-2xl modal-box" onclick="event.stopPropagation()">
+            <h3 id="achievementsTitle" class="text-2xl font-bold mb-1">Conquistas</h3>
+            <p id="achievementsProgress" class="text-sm text-gray-400 mb-4"></p>
+            <div id="achievementsList" class="space-y-2 overflow-y-auto custom-scroll pr-2"></div>
+            <div class="flex justify-end mt-6">
+                <button type="button" onclick="closeAchievementsModal()" class="px-6 py-2 text-gray-400 hover:text-white transition">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE METADATA (GÊNERO, SINOPSE, SCREENSHOTS) -->
+    <div id="metadataModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 modal-overlay" onclick="if(event.target===this)closeMetadataModal()">
+        <div class="glass w-full max-w-2xl max-h-[85vh] flex flex-col p-8 rounded-2xl border border-gray-700 shadow-2xl modal-box overflow-y-auto custom-scroll" onclick="event.stopPropagation()">
+            <h3 id="metadataTitle" class="text-2xl font-bold mb-4">Detalhes</h3>
+            <div id="metadataBody" class="space-y-4"></div>
+            <div class="flex justify-end mt-6">
+                <button type="button" onclick="closeMetadataModal()" class="px-6 py-2 text-gray-400 hover:text-white transition">Fechar</button>
             </div>
         </div>
     </div>
