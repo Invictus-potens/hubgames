@@ -139,6 +139,10 @@ function renderGames(filter = 'all', keepPage = false) {
                     <button onclick="editGame(${game.id})" class="btn-icon bg-blue-500/10 hover:bg-blue-500/25" title="Editar">
                         <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                     </button>
+                    ${game.appid ? `
+                    <button onclick="toggleNewsPriority(${game.id})" class="btn-icon ${game.newsPriority ? 'bg-orange-500/20 hover:bg-orange-500/30' : 'bg-gray-500/10 hover:bg-orange-500/15'}" title="Prioridade nas notícias">
+                        <svg class="w-4 h-4 ${game.newsPriority ? 'text-orange-400' : 'text-gray-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path></svg>
+                    </button>` : ''}
                     <button onclick="toggleFavorite(${game.id})" class="btn-icon ${game.favorite ? 'bg-yellow-500/20 hover:bg-yellow-500/30' : 'bg-gray-500/10 hover:bg-yellow-500/15'}" title="Favoritar">
                         <svg class="w-4 h-4 ${game.favorite ? 'text-yellow-400' : 'text-gray-500'}" fill="${game.favorite ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
                     </button>
@@ -384,35 +388,69 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+let newsItems = [];
+
 async function loadNews() {
     const feed = document.getElementById('newsFeed');
     try {
         const res = await fetch('/api/news');
         if (!res.ok) { feed.innerHTML = ''; return; }
         const { news } = await res.json();
+        newsItems = news;
 
         if (news.length === 0) {
-            feed.innerHTML = '<p class="text-gray-500 text-sm">Nenhuma notícia recente dos seus jogos (marque jogos como "Jogando", "Backlog" ou favoritos para ver notícias deles).</p>';
+            feed.innerHTML = '<p class="text-gray-500 text-sm">Nenhuma notícia recente dos seus jogos (marque jogos como "Jogando", "Backlog", favoritos ou com prioridade 📰 para ver notícias deles).</p>';
             return;
         }
 
-        feed.innerHTML = news.map(n => {
+        feed.innerHTML = news.map((n, i) => {
             const date = new Date(n.date * 1000).toLocaleDateString('pt-BR');
-            const inner = `
-                <img src="${escapeHtml(n.cover || 'https://via.placeholder.com/280x112?text=Sem+Capa')}" loading="lazy" class="w-full h-28 object-cover">
-                <div class="p-3">
-                    <p class="text-xs text-red-400 font-bold truncate">${escapeHtml(n.gameTitle)}</p>
-                    <p class="text-sm font-semibold line-clamp-2 mt-1">${escapeHtml(n.title)}</p>
-                    <p class="text-xs text-gray-400 line-clamp-2 mt-1">${escapeHtml(n.contents)}</p>
-                    <p class="text-xs text-gray-500 mt-2">${date}${n.feedlabel ? ` · ${escapeHtml(n.feedlabel)}` : ''}</p>
-                </div>`;
-            return n.url
-                ? `<a href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer" class="min-w-[280px] max-w-[280px] gx-card border border-gray-800 rounded-lg overflow-hidden glass block">${inner}</a>`
-                : `<div class="min-w-[280px] max-w-[280px] gx-card border border-gray-800 rounded-lg overflow-hidden glass">${inner}</div>`;
+            return `
+                <button type="button" onclick="openNewsModal(${i})" class="min-w-[280px] max-w-[280px] text-left gx-card border border-gray-800 rounded-lg overflow-hidden glass cursor-pointer">
+                    <img src="${escapeHtml(n.cover || 'https://via.placeholder.com/280x112?text=Sem+Capa')}" loading="lazy" class="w-full h-28 object-cover">
+                    <div class="p-3">
+                        <p class="text-xs text-red-400 font-bold truncate">${escapeHtml(n.gameTitle)}</p>
+                        <p class="text-sm font-semibold line-clamp-2 mt-1">${escapeHtml(n.title)}</p>
+                        <p class="text-xs text-gray-400 line-clamp-2 mt-1">${escapeHtml(n.contents)}</p>
+                        <p class="text-xs text-gray-500 mt-2">${date}${n.feedlabel ? ` · ${escapeHtml(n.feedlabel)}` : ''}</p>
+                    </div>
+                </button>`;
         }).join('');
     } catch (err) {
         feed.innerHTML = '';
     }
+}
+
+function openNewsModal(index) {
+    const n = newsItems[index];
+    if (!n) return;
+
+    document.getElementById('newsModalTitle').textContent = n.title;
+    document.getElementById('newsModalMeta').textContent =
+        `${n.gameTitle} · ${new Date(n.date * 1000).toLocaleDateString('pt-BR')}${n.feedlabel ? ` · ${n.feedlabel}` : ''}`;
+    document.getElementById('newsModalBody').textContent = n.contents || 'Sem conteúdo disponível.';
+
+    const link = document.getElementById('newsModalLink');
+    if (n.url) {
+        link.href = n.url;
+        link.classList.remove('hidden');
+    } else {
+        link.classList.add('hidden');
+    }
+
+    document.getElementById('newsModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeNewsModal() {
+    document.getElementById('newsModal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+async function toggleNewsPriority(id) {
+    await fetch(`/api/games/${id}/news-priority`, { method: 'PATCH' });
+    await loadGames();
+    loadNews();
 }
 
 // --- INTERFACE E NAVEGAÇÃO ---

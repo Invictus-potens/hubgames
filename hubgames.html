@@ -213,6 +213,19 @@
         </div>
     </div>
 
+    <!-- MODAL DE NOTÍCIA -->
+    <div id="newsModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 modal-overlay" onclick="if(event.target===this)closeNewsModal()">
+        <div class="glass w-full max-w-lg max-h-[80vh] flex flex-col p-8 rounded-2xl border border-gray-700 shadow-2xl modal-box" onclick="event.stopPropagation()">
+            <h3 id="newsModalTitle" class="text-2xl font-bold mb-1"></h3>
+            <p id="newsModalMeta" class="text-sm text-gray-400 mb-4"></p>
+            <div id="newsModalBody" class="text-sm text-gray-300 leading-relaxed whitespace-pre-line overflow-y-auto custom-scroll pr-2 flex-1"></div>
+            <div class="flex items-center mt-6">
+                <a id="newsModalLink" href="#" target="_blank" rel="noopener noreferrer" class="hidden text-sm text-red-400 hover:text-red-300 transition font-semibold">Ver na Steam ↗</a>
+                <button type="button" onclick="closeNewsModal()" class="px-6 py-2 text-gray-400 hover:text-white transition ml-auto">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Script externo -->
     <script src="script.js"></script>
 </body>

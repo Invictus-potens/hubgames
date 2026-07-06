@@ -162,6 +162,17 @@ app.patch('/api/games/:id/favorite', requireAuth, async (req, res) => {
     res.json(game);
 });
 
+app.patch('/api/games/:id/news-priority', requireAuth, async (req, res) => {
+    const dbUser = await getDbUser(req);
+    const id = Number(req.params.id);
+
+    const existing = await prisma.game.findUnique({ where: { id } });
+    if (!existing || existing.userId !== dbUser.id) return res.status(404).json({ error: 'not_found' });
+
+    const game = await prisma.game.update({ where: { id }, data: { newsPriority: !existing.newsPriority } });
+    res.json(game);
+});
+
 app.delete('/api/games/:id', requireAuth, async (req, res) => {
     const dbUser = await getDbUser(req);
     const id = Number(req.params.id);
@@ -336,7 +347,8 @@ async function getAppNews(appid) {
     const cached = newsCache.get(appid);
     if (cached && Date.now() - cached.fetchedAt < NEWS_CACHE_TTL) return cached.items;
 
-    const url = `https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=${appid}&count=3&maxlength=300&format=json`;
+    // maxlength=0 traz o texto completo para o modal de notícia
+    const url = `https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=${appid}&count=3&maxlength=0&format=json`;
     const res = await fetch(url);
     const data = await res.json();
 
@@ -356,14 +368,26 @@ async function getAppNews(appid) {
 
 app.get('/api/news', requireAuth, async (req, res) => {
     const dbUser = await getDbUser(req);
-    const games = await prisma.game.findMany({
-        where: {
-            userId: dbUser.id,
-            appid: { not: null },
-            OR: [{ category: 'playing' }, { category: 'backlog' }, { favorite: true }]
-        },
+    // Prioritários sempre entram; sobrando vaga, completa com Jogando/Backlog/favoritos
+    const priorityGames = await prisma.game.findMany({
+        where: { userId: dbUser.id, appid: { not: null }, newsPriority: true },
         take: 15
     });
+
+    const remaining = 15 - priorityGames.length;
+    const otherGames = remaining > 0
+        ? await prisma.game.findMany({
+            where: {
+                userId: dbUser.id,
+                appid: { not: null },
+                newsPriority: false,
+                OR: [{ category: 'playing' }, { category: 'backlog' }, { favorite: true }]
+            },
+            take: remaining
+        })
+        : [];
+
+    const games = [...priorityGames, ...otherGames];
 
     try {
         const perGame = await Promise.all(games.map(async g => {
