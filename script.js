@@ -58,6 +58,15 @@ const releaseCalendar = document.getElementById('releaseCalendar');
 
 let currentFilter = 'all';
 
+const PAGE_SIZE = 60;
+let visibleCount = PAGE_SIZE;
+
+let searchDebounce = null;
+function onSearchInput() {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => renderGames(currentFilter), 250);
+}
+
 function populateFilterOptions() {
     const genreFilter = document.getElementById('genreFilter');
     const yearFilter = document.getElementById('yearFilter');
@@ -78,8 +87,9 @@ function populateFilterOptions() {
     yearFilter.value = selectedYear;
 }
 
-function renderGames(filter = 'all') {
+function renderGames(filter = 'all', keepPage = false) {
     currentFilter = filter;
+    if (!keepPage) visibleCount = PAGE_SIZE;
     populateFilterOptions();
     gamesGrid.innerHTML = '';
 
@@ -102,14 +112,14 @@ function renderGames(filter = 'all') {
         return;
     }
 
-    const cards = filtered.map(game => {
+    const cards = filtered.slice(0, visibleCount).map(game => {
         const categoryLabels = { playing: 'Jogando', played: 'Já Joguei', old: 'Antigo', new: 'Novo', release: 'Calendário' };
         const playtimeBadge = game.playtimeForever != null
             ? `<p class="text-xs text-gray-500 mb-2">${(game.playtimeForever / 60).toFixed(1)}h jogadas${game.playtime2Weeks ? ` · ${(game.playtime2Weeks / 60).toFixed(1)}h nas últimas 2 semanas` : ''}</p>`
             : '';
         const card = `
             <div class="glass p-4 rounded-xl group relative gx-card border border-gray-800 cursor-default">
-                <img src="${game.cover || 'https://via.placeholder.com/300x400?text=Sem+Capa'}" class="w-full h-48 object-cover rounded-lg mb-4 shadow-lg">
+                <img src="${game.cover || 'https://via.placeholder.com/300x400?text=Sem+Capa'}" loading="lazy" class="w-full h-48 object-cover rounded-lg mb-4 shadow-lg">
                 ${game.favorite ? '<span class="absolute top-6 right-6 text-yellow-400 text-xl drop-shadow-lg">★</span>' : ''}
                 <h4 class="font-bold text-lg mb-1 truncate">${game.title}</h4>
                 <p class="text-xs text-gray-500 mb-3 uppercase tracking-widest">${categoryLabels[game.category] || game.category}</p>
@@ -139,7 +149,20 @@ function renderGames(filter = 'all') {
         return card;
     });
 
-    gamesGrid.innerHTML = cards.join('');
+    const showMoreBtn = filtered.length > visibleCount
+        ? `<div class="col-span-full text-center py-4">
+                <button onclick="showMoreGames()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-6 py-2.5 rounded-lg font-semibold transition-all">
+                    Mostrar mais (${Math.min(visibleCount, filtered.length)} de ${filtered.length})
+                </button>
+           </div>`
+        : '';
+
+    gamesGrid.innerHTML = cards.join('') + showMoreBtn;
+}
+
+function showMoreGames() {
+    visibleCount += PAGE_SIZE;
+    renderGames(currentFilter, true);
 }
 
 function renderCalendar() {
@@ -154,7 +177,7 @@ function renderCalendar() {
 
         return `
             <div class="min-w-[160px] max-w-[160px] gx-card border border-gray-800 rounded-lg overflow-hidden glass cursor-pointer">
-                <img src="${game.cover || 'https://via.placeholder.com/160x200?text=Cover'}" class="w-full h-40 object-cover">
+                <img src="${game.cover || 'https://via.placeholder.com/160x200?text=Cover'}" loading="lazy" class="w-full h-40 object-cover">
                 <div class="p-3 text-center bg-black/40">
                     <p class="text-xs font-bold text-gray-400 truncate">${game.title}</p>
                     <p class="text-sm font-black mt-1 text-white">${day} | ${month}</p>
@@ -277,7 +300,7 @@ async function openAchievements(gameId) {
 
         list.innerHTML = achievements.map(a => `
             <div class="flex items-center gap-3 p-2 rounded-lg ${a.achieved ? 'bg-purple-500/10' : 'bg-gray-800/40 opacity-60'}">
-                <img src="${a.icon}" class="w-10 h-10 rounded shrink-0">
+                <img src="${a.icon}" loading="lazy" class="w-10 h-10 rounded shrink-0">
                 <div class="min-w-0">
                     <p class="text-sm font-semibold truncate">${a.name}</p>
                     <p class="text-xs text-gray-400 truncate">${a.description}</p>
@@ -440,6 +463,4 @@ async function importSteamLibrary() {
 }
 
 // --- INICIALIZAÇÃO ---
-renderGames();
-renderCalendar();
 loadSteamUser();

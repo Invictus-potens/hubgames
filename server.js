@@ -52,9 +52,11 @@ passport.use(new SteamStrategy(
 ));
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(express.json());
 
 app.use(session({
+    proxy: true,
     store: new pgSession({ pool: pgPool, createTableIfMissing: true }),
     secret: SESSION_SECRET || 'dev-secret',
     resave: false,
@@ -224,22 +226,29 @@ app.get('/api/library', requireAuth, async (req, res) => {
         const data = await steamRes.json();
         const steamGames = data.response?.games || [];
 
-        const games = await Promise.all(steamGames.map(g => prisma.game.upsert({
-            where: { userId_appid: { userId: dbUser.id, appid: g.appid } },
-            update: {
-                playtimeForever: g.playtime_forever,
-                playtime2Weeks: g.playtime_2weeks || 0
-            },
-            create: {
-                userId: dbUser.id,
-                title: g.name,
-                category: (g.playtime_2weeks || 0) > 0 ? 'playing' : 'played',
-                cover: `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.appid}/header.jpg`,
-                appid: g.appid,
-                playtimeForever: g.playtime_forever,
-                playtime2Weeks: g.playtime_2weeks || 0
-            }
-        })));
+        // Lotes pequenos para não estourar o pool de conexões do Prisma com bibliotecas grandes
+        const CHUNK_SIZE = 20;
+        const games = [];
+        for (let i = 0; i < steamGames.length; i += CHUNK_SIZE) {
+            const chunk = steamGames.slice(i, i + CHUNK_SIZE);
+            const results = await Promise.all(chunk.map(g => prisma.game.upsert({
+                where: { userId_appid: { userId: dbUser.id, appid: g.appid } },
+                update: {
+                    playtimeForever: g.playtime_forever,
+                    playtime2Weeks: g.playtime_2weeks || 0
+                },
+                create: {
+                    userId: dbUser.id,
+                    title: g.name,
+                    category: (g.playtime_2weeks || 0) > 0 ? 'playing' : 'played',
+                    cover: `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.appid}/header.jpg`,
+                    appid: g.appid,
+                    playtimeForever: g.playtime_forever,
+                    playtime2Weeks: g.playtime_2weeks || 0
+                }
+            })));
+            games.push(...results);
+        }
 
         res.json({ games });
     } catch (err) {
