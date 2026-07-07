@@ -127,6 +127,7 @@ function renderGames(filter = 'all', keepPage = false) {
                 <p class="text-xs text-gray-500 mb-3 uppercase tracking-widest">${categoryLabels[game.category] || game.category}</p>
                 ${playtimeBadge}
                 ${game.genre ? `<p class="text-xs text-gray-500 mb-2">${game.genre}${game.metacritic ? ` · ★ ${game.metacritic}` : ''}</p>` : ''}
+                ${game.rating ? `<p class="text-sm text-yellow-400 mb-1">${'★'.repeat(game.rating)}${'☆'.repeat(5 - game.rating)}</p>` : ''}
                 <p class="text-sm text-gray-400 line-clamp-2 italic">"${game.notes || 'Sem notas...'}"</p>
                 <div class="mt-4 flex justify-end gap-2">
                     <button onclick="openMetadata(${game.id})" class="btn-icon bg-green-500/10 hover:bg-green-500/25" title="Detalhes">
@@ -208,7 +209,8 @@ gameForm.onsubmit = async (e) => {
         date: document.getElementById('gameDate').value,
         notes: document.getElementById('gameNotes').value,
         favorite: document.getElementById('gameFav').checked,
-        completed: document.getElementById('gameCompleted').checked
+        completed: document.getElementById('gameCompleted').checked,
+        rating: Number(document.getElementById('gameRating').value) || null
     };
 
     if (editingId) {
@@ -243,6 +245,7 @@ function editGame(id) {
     document.getElementById('gameNotes').value = game.notes || '';
     document.getElementById('gameFav').checked = game.favorite || false;
     document.getElementById('gameCompleted').checked = game.completed || false;
+    document.getElementById('gameRating').value = game.rating || '';
 
     openModal();
 }
@@ -590,6 +593,66 @@ function closeFriendLibraryModal() {
     document.body.style.overflow = '';
 }
 
+// --- LISTAS COMPARTILHÁVEIS ---
+async function loadShareLists() {
+    const container = document.getElementById('shareListsContainer');
+    try {
+        const res = await fetch('/api/share-lists');
+        if (!res.ok) { container.innerHTML = ''; return; }
+        const { lists } = await res.json();
+
+        if (lists.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-sm">Nenhuma lista criada ainda.</p>';
+            return;
+        }
+
+        container.innerHTML = lists.map(l => {
+            const url = `${window.location.origin}/share/${l.slug}`;
+            return `
+                <div class="glass p-3 rounded-lg border border-gray-800 flex items-center gap-3">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold truncate">${escapeHtml(l.title)}</p>
+                        <p class="text-xs text-gray-500">${l.gameCount} jogo${l.gameCount === 1 ? '' : 's'}</p>
+                    </div>
+                    <button type="button" onclick="copyShareListLink('${url}')" class="text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 rounded-lg transition">Copiar Link</button>
+                    <button type="button" onclick="deleteShareList(${l.id})" class="btn-icon bg-red-500/10 hover:bg-red-500/25" title="Remover">
+                        <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>`;
+        }).join('');
+    } catch (err) {
+        container.innerHTML = '';
+    }
+}
+
+async function copyShareListLink(url) {
+    try {
+        await navigator.clipboard.writeText(url);
+    } catch (err) {
+        prompt('Copie o link:', url);
+    }
+}
+
+async function deleteShareList(id) {
+    await fetch(`/api/share-lists/${id}`, { method: 'DELETE' });
+    loadShareLists();
+}
+
+document.getElementById('shareListForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('shareListTitle').value;
+    const filter = document.getElementById('shareListFilter').value;
+
+    await fetch('/api/share-lists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, filter })
+    });
+
+    document.getElementById('shareListTitle').value = '';
+    loadShareLists();
+});
+
 // --- INTERFACE E NAVEGAÇÃO ---
 
 function filterGames(category) {
@@ -598,7 +661,20 @@ function filterGames(category) {
     renderGames(category);
 }
 
+function renderRatingStars(selected) {
+    document.getElementById('gameRating').value = selected || '';
+    document.getElementById('gameRatingStars').innerHTML = [1, 2, 3, 4, 5].map(n => `
+        <button type="button" onclick="setGameRating(${n})" class="${n <= selected ? 'text-yellow-400' : 'text-gray-600'} hover:text-yellow-300 transition">★</button>
+    `).join('');
+}
+
+function setGameRating(n) {
+    const current = Number(document.getElementById('gameRating').value) || 0;
+    renderRatingStars(current === n ? 0 : n);
+}
+
 function openModal() {
+    renderRatingStars(Number(document.getElementById('gameRating').value) || 0);
     document.getElementById('gameModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
@@ -640,6 +716,7 @@ async function loadSteamUser() {
             loadNews();
             loadRecentlyPlayed();
             loadFriends();
+            loadShareLists();
             importSteamLibrary();
         } else {
             appShell.classList.add('hidden');

@@ -29,15 +29,15 @@
 
 ## Fase 2 — Social (depende da Fase 0)
 
-5. **Reviews/avaliações pessoais**
-   - Nota + comentário por jogo, visível no perfil
+5. **Reviews/avaliações pessoais** ✅ concluído
+   - Nota (1 a 5 estrelas) por jogo, visível no card; comentário já existia via "Notas Pessoais"
 
 6. **Sistema de amigos** ✅ concluído
    - Lista de amigos com status online e jogo atual
    - Ver biblioteca de um amigo e jogos em comum
 
-7. **Listas compartilháveis**
-   - Ex.: "meus favoritos de 2026", com link público
+7. **Listas compartilháveis** ✅ concluído
+   - Cria lista a partir de um filtro (favoritos, completados, jogando, backlog ou todos) com link público `/share/:slug`, sem exigir login para visualizar
 
 ---
 

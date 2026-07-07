@@ -8,12 +8,13 @@ datasource db {
 }
 
 model User {
-  id          Int      @id @default(autoincrement())
-  steamId     String   @unique
+  id          Int         @id @default(autoincrement())
+  steamId     String      @unique
   displayName String
   avatar      String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime    @default(now())
   games       Game[]
+  shareLists  ShareList[]
 }
 
 model Game {
@@ -28,6 +29,7 @@ model Game {
   favorite        Boolean  @default(false)
   completed       Boolean  @default(false)
   newsPriority    Boolean  @default(false)
+  rating          Int?
   appid           Int?
   playtimeForever Int?
   playtime2Weeks  Int?
@@ -39,4 +41,14 @@ model Game {
   updatedAt       DateTime @updatedAt
 
   @@unique([userId, appid])
+}
+
+model ShareList {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  slug      String   @unique
+  gameIds   Int[]    @default([])
+  createdAt DateTime @default(now())
 }

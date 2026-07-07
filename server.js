@@ -9,6 +9,7 @@ const SteamStrategy = require('passport-steam').Strategy;
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
 const { JSDOM } = require('jsdom');
+const crypto = require('crypto');
 
 const { STEAM_API_KEY, STEAM_DOMAIN, SESSION_SECRET, PORT, NODE_ENV, DATABASE_URL, RAWG_API_KEY } = process.env;
 
@@ -120,9 +121,15 @@ app.get('/api/stats', requireAuth, async (req, res) => {
     });
 });
 
+function normalizeRating(rating) {
+    const n = Number(rating);
+    if (!n || n < 1 || n > 5) return null;
+    return Math.round(n);
+}
+
 app.post('/api/games', requireAuth, async (req, res) => {
     const dbUser = await getDbUser(req);
-    const { title, category, date, notes, favorite, completed } = req.body;
+    const { title, category, date, notes, favorite, completed, rating } = req.body;
     const game = await prisma.game.create({
         data: {
             userId: dbUser.id,
@@ -131,7 +138,8 @@ app.post('/api/games', requireAuth, async (req, res) => {
             date: date || null,
             notes: notes || null,
             favorite: !!favorite,
-            completed: !!completed
+            completed: !!completed,
+            rating: normalizeRating(rating)
         }
     });
     res.status(201).json(game);
@@ -140,14 +148,14 @@ app.post('/api/games', requireAuth, async (req, res) => {
 app.put('/api/games/:id', requireAuth, async (req, res) => {
     const dbUser = await getDbUser(req);
     const id = Number(req.params.id);
-    const { title, category, date, notes, favorite, completed } = req.body;
+    const { title, category, date, notes, favorite, completed, rating } = req.body;
 
     const existing = await prisma.game.findUnique({ where: { id } });
     if (!existing || existing.userId !== dbUser.id) return res.status(404).json({ error: 'not_found' });
 
     const game = await prisma.game.update({
         where: { id },
-        data: { title, category, date: date || null, notes: notes || null, favorite: !!favorite, completed: !!completed }
+        data: { title, category, date: date || null, notes: notes || null, favorite: !!favorite, completed: !!completed, rating: normalizeRating(rating) }
     });
     res.json(game);
 });
@@ -614,6 +622,100 @@ app.get('/api/news', requireAuth, async (req, res) => {
     } catch (err) {
         res.status(502).json({ error: 'steam_news_error' });
     }
+});
+
+const SHARE_LIST_FILTERS = {
+    all: {},
+    favorite: { favorite: true },
+    completed: { completed: true },
+    playing: { category: 'playing' },
+    backlog: { category: 'backlog' }
+};
+
+app.get('/api/share-lists', requireAuth, async (req, res) => {
+    try {
+        const dbUser = await getDbUser(req);
+        const lists = await prisma.shareList.findMany({
+            where: { userId: dbUser.id },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json({ lists: lists.map(l => ({ id: l.id, title: l.title, slug: l.slug, gameCount: l.gameIds.length, createdAt: l.createdAt })) });
+    } catch (err) {
+        res.status(502).json({ error: 'database_error' });
+    }
+});
+
+app.post('/api/share-lists', requireAuth, async (req, res) => {
+    const { title, filter } = req.body;
+    if (!title || !SHARE_LIST_FILTERS[filter]) {
+        return res.status(400).json({ error: 'invalid_input' });
+    }
+
+    try {
+        const dbUser = await getDbUser(req);
+        const games = await prisma.game.findMany({
+            where: { userId: dbUser.id, ...SHARE_LIST_FILTERS[filter] },
+            select: { id: true }
+        });
+
+        const slug = crypto.randomBytes(6).toString('hex');
+        const list = await prisma.shareList.create({
+            data: { userId: dbUser.id, title, slug, gameIds: games.map(g => g.id) }
+        });
+
+        res.status(201).json({ id: list.id, title: list.title, slug: list.slug, gameCount: list.gameIds.length });
+    } catch (err) {
+        res.status(502).json({ error: 'database_error' });
+    }
+});
+
+app.delete('/api/share-lists/:id', requireAuth, async (req, res) => {
+    try {
+        const dbUser = await getDbUser(req);
+        const id = Number(req.params.id);
+
+        const existing = await prisma.shareList.findUnique({ where: { id } });
+        if (!existing || existing.userId !== dbUser.id) return res.status(404).json({ error: 'not_found' });
+
+        await prisma.shareList.delete({ where: { id } });
+        res.status(204).end();
+    } catch (err) {
+        res.status(502).json({ error: 'database_error' });
+    }
+});
+
+// Rota pública (sem login) para visualização da lista compartilhada
+app.get('/api/public/share-lists/:slug', async (req, res) => {
+    try {
+        const list = await prisma.shareList.findUnique({ where: { slug: req.params.slug } });
+        if (!list) return res.status(404).json({ error: 'not_found' });
+
+        const [games, owner] = await Promise.all([
+            prisma.game.findMany({
+                where: { id: { in: list.gameIds }, userId: list.userId },
+                orderBy: { title: 'asc' }
+            }),
+            prisma.user.findUnique({ where: { id: list.userId } })
+        ]);
+
+        res.json({
+            title: list.title,
+            ownerName: owner?.displayName || 'Usuário',
+            games: games.map(g => ({
+                title: g.title,
+                cover: g.cover,
+                category: g.category,
+                rating: g.rating,
+                genre: g.genre
+            }))
+        });
+    } catch (err) {
+        res.status(502).json({ error: 'database_error' });
+    }
+});
+
+app.get('/share/:slug', (req, res) => {
+    res.sendFile(path.join(__dirname, 'shared-list.html'));
 });
 
 app.post('/api/logout', (req, res) => {

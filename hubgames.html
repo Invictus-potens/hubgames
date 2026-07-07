@@ -100,6 +100,29 @@
                 <div id="friendsFeed" class="flex gap-4 overflow-x-auto pb-4 custom-scroll"></div>
             </section>
 
+            <!-- SECTION: LISTAS COMPARTILHÁVEIS -->
+            <section class="mb-12">
+                <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                    <span class="w-2 h-6 bg-red-600 rounded-full"></span>
+                    Listas Compartilháveis
+                </h2>
+                <form id="shareListForm" class="flex flex-wrap gap-3 mb-4">
+                    <input id="shareListTitle" type="text" placeholder="Ex: Meus favoritos de 2026" required
+                        class="flex-1 min-w-[200px] bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none focus:border-red-500 transition">
+                    <select id="shareListFilter" class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none">
+                        <option value="favorite">Favoritos</option>
+                        <option value="completed">Completados</option>
+                        <option value="playing">Jogando</option>
+                        <option value="backlog">Backlog</option>
+                        <option value="all">Todos os jogos</option>
+                    </select>
+                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-all">
+                        Criar Lista
+                    </button>
+                </form>
+                <div id="shareListsContainer" class="space-y-2"></div>
+            </section>
+
             <!-- SECTION: CALENDÁRIO DE ESTREIAS (Estilo Opera GX) -->
             <section class="mb-12">
                 <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
@@ -171,6 +194,11 @@
                     </div>
                 </div>
 
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Sua Nota</label>
+                    <input type="hidden" id="gameRating" value="">
+                    <div id="gameRatingStars" class="flex gap-1 text-2xl"></div>
+                </div>
                 <div>
                     <label class="block text-sm text-gray-400 mb-1">Notas Pessoais</label>
                     <textarea id="gameNotes" rows="3" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 outline-none focus:border-red-500 transition"></textarea>

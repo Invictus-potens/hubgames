@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista Compartilhada | GameVault</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="min-h-screen pb-20">
+    <nav class="p-6 border-b border-gray-800 flex justify-between items-center glass sticky top-0 z-50">
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-red-500 to-purple-600 bg-clip-text text-transparent">
+            GAMEVAULT
+        </h1>
+        <a href="/" class="text-sm text-gray-400 hover:text-white transition">Criar minha conta ↗</a>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <div id="listHeader" class="mb-8"></div>
+        <div id="listGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+    </main>
+
+    <script>
+        const categoryLabels = { playing: 'Jogando', played: 'Já Joguei', backlog: 'Backlog', old: 'Antigo', new: 'Novo', release: 'Calendário' };
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text ?? '';
+            return div.innerHTML;
+        }
+
+        async function loadSharedList() {
+            const slug = window.location.pathname.split('/').filter(Boolean).pop();
+            const header = document.getElementById('listHeader');
+            const grid = document.getElementById('listGrid');
+
+            try {
+                const res = await fetch(`/api/public/share-lists/${slug}`);
+                if (!res.ok) {
+                    header.innerHTML = '<h2 class="text-2xl font-bold text-gray-400">Lista não encontrada.</h2>';
+                    return;
+                }
+                const { title, ownerName, games } = await res.json();
+
+                header.innerHTML = `
+                    <h2 class="text-2xl font-bold">${escapeHtml(title)}</h2>
+                    <p class="text-sm text-gray-400 mt-1">Compartilhado por ${escapeHtml(ownerName)} · ${games.length} jogo${games.length === 1 ? '' : 's'}</p>
+                `;
+
+                if (games.length === 0) {
+                    grid.innerHTML = '<p class="col-span-full text-gray-500 text-center py-10">Esta lista está vazia.</p>';
+                    return;
+                }
+
+                grid.innerHTML = games.map(g => `
+                    <div class="glass p-4 rounded-xl gx-card border border-gray-800">
+                        <img src="${escapeHtml(g.cover || 'https://via.placeholder.com/300x400?text=Sem+Capa')}" loading="lazy" class="w-full h-48 object-cover rounded-lg mb-4 shadow-lg">
+                        <h4 class="font-bold text-lg mb-1 truncate">${escapeHtml(g.title)}</h4>
+                        <p class="text-xs text-gray-500 mb-2 uppercase tracking-widest">${escapeHtml(categoryLabels[g.category] || g.category)}</p>
+                        ${g.genre ? `<p class="text-xs text-gray-500 mb-2">${escapeHtml(g.genre)}</p>` : ''}
+                        ${g.rating ? `<p class="text-sm text-yellow-400">${'★'.repeat(g.rating)}${'☆'.repeat(5 - g.rating)}</p>` : ''}
+                    </div>
+                `).join('');
+            } catch (err) {
+                header.innerHTML = '<h2 class="text-2xl font-bold text-gray-400">Não foi possível carregar a lista.</h2>';
+            }
+        }
+
+        loadSharedList();
+    </script>
+</body>
+</html>
