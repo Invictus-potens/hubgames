@@ -341,6 +341,78 @@ app.get('/api/games/:id/achievements', requireAuth, async (req, res) => {
     }
 });
 
+const PERSONA_STATE_LABELS = ['Offline', 'Online', 'Ocupado', 'Ausente', 'Dormindo', 'Buscando troca', 'Buscando jogo'];
+
+app.get('/api/friends', requireAuth, async (req, res) => {
+    const steamId = req.user.id;
+
+    try {
+        const friendsUrl = `https://api.steampowered.com/ISteamUser/GetFriendList/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&relationship=friend`;
+        const friendsRes = await fetch(friendsUrl);
+        if (!friendsRes.ok) {
+            // Lista de amigos privada nas configurações de privacidade da Steam
+            return res.json({ friends: [], private: true });
+        }
+        const friendsData = await friendsRes.json();
+        const friendIds = (friendsData.friendslist?.friends || []).map(f => f.steamid);
+
+        if (friendIds.length === 0) return res.json({ friends: [] });
+
+        // GetPlayerSummaries aceita até 100 steamids por chamada
+        const chunks = [];
+        for (let i = 0; i < friendIds.length; i += 100) chunks.push(friendIds.slice(i, i + 100));
+
+        const players = (await Promise.all(chunks.map(async chunk => {
+            const url = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${chunk.join(',')}`;
+            const r = await fetch(url);
+            const d = await r.json();
+            return d.response?.players || [];
+        }))).flat();
+
+        const friends = players
+            .map(p => ({
+                steamId: p.steamid,
+                name: p.personaname,
+                avatar: p.avatarfull || p.avatarmedium || p.avatar,
+                personaState: p.personastate,
+                personaStateLabel: PERSONA_STATE_LABELS[p.personastate] || 'Desconhecido',
+                inGame: p.gameextrainfo || null,
+                gameAppid: p.gameid || null,
+                profileUrl: p.profileurl
+            }))
+            .sort((a, b) => {
+                const rank = f => (f.inGame ? 0 : f.personaState > 0 ? 1 : 2);
+                return rank(a) - rank(b) || a.name.localeCompare(b.name);
+            });
+
+        res.json({ friends });
+    } catch (err) {
+        res.status(502).json({ error: 'steam_api_error' });
+    }
+});
+
+app.get('/api/recently-played', requireAuth, async (req, res) => {
+    const steamId = req.user.id;
+
+    try {
+        const url = `https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&format=json`;
+        const steamRes = await fetch(url);
+        const data = await steamRes.json();
+
+        const games = (data.response?.games || []).map(g => ({
+            appid: g.appid,
+            name: g.name,
+            cover: `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.appid}/header.jpg`,
+            playtime2Weeks: g.playtime_2weeks || 0,
+            playtimeForever: g.playtime_forever || 0
+        }));
+
+        res.json({ games });
+    } catch (err) {
+        res.status(502).json({ error: 'steam_api_error' });
+    }
+});
+
 const NEWS_CACHE_TTL = 30 * 60 * 1000;
 const newsCache = new Map();
 

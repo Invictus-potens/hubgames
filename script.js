@@ -458,6 +458,79 @@ async function toggleNewsPriority(id) {
     loadNews();
 }
 
+async function loadRecentlyPlayed() {
+    const feed = document.getElementById('recentlyPlayedFeed');
+    try {
+        const res = await fetch('/api/recently-played');
+        if (!res.ok) { feed.innerHTML = ''; return; }
+        const { games } = await res.json();
+
+        if (games.length === 0) {
+            feed.innerHTML = '<p class="text-gray-500 text-sm">Nenhum jogo jogado nas últimas 2 semanas.</p>';
+            return;
+        }
+
+        feed.innerHTML = games.map(g => {
+            const hours2Weeks = Math.round((g.playtime2Weeks / 60) * 10) / 10;
+            const hoursTotal = Math.round((g.playtimeForever / 60) * 10) / 10;
+            return `
+                <div class="min-w-[220px] max-w-[220px] gx-card border border-gray-800 rounded-lg overflow-hidden glass">
+                    <img src="${escapeHtml(g.cover)}" loading="lazy" class="w-full h-24 object-cover">
+                    <div class="p-3">
+                        <p class="text-sm font-semibold line-clamp-2">${escapeHtml(g.name)}</p>
+                        <p class="text-xs text-red-400 mt-1">${hours2Weeks}h nas últimas 2 semanas</p>
+                        <p class="text-xs text-gray-500">${hoursTotal}h no total</p>
+                    </div>
+                </div>`;
+        }).join('');
+    } catch (err) {
+        feed.innerHTML = '';
+    }
+}
+
+const PERSONA_STATE_COLORS = {
+    0: 'bg-gray-600',
+    1: 'bg-green-500',
+    2: 'bg-red-500',
+    3: 'bg-yellow-500',
+    4: 'bg-yellow-500',
+    5: 'bg-green-500',
+    6: 'bg-green-500'
+};
+
+async function loadFriends() {
+    const feed = document.getElementById('friendsFeed');
+    try {
+        const res = await fetch('/api/friends');
+        if (!res.ok) { feed.innerHTML = ''; return; }
+        const { friends, private: isPrivate } = await res.json();
+
+        if (isPrivate) {
+            feed.innerHTML = '<p class="text-gray-500 text-sm">Sua lista de amigos está privada na Steam (Perfil > Editar Perfil > Privacidade > "Lista de amigos").</p>';
+            return;
+        }
+
+        if (friends.length === 0) {
+            feed.innerHTML = '<p class="text-gray-500 text-sm">Nenhum amigo encontrado.</p>';
+            return;
+        }
+
+        feed.innerHTML = friends.map(f => `
+            <a href="${escapeHtml(f.profileUrl)}" target="_blank" rel="noopener noreferrer" class="min-w-[220px] max-w-[220px] gx-card border border-gray-800 rounded-lg overflow-hidden glass p-3 flex items-center gap-3">
+                <div class="relative shrink-0">
+                    <img src="${escapeHtml(f.avatar)}" class="w-12 h-12 rounded-full border border-gray-700">
+                    <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-gray-900 ${PERSONA_STATE_COLORS[f.personaState] || 'bg-gray-600'}"></span>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold truncate">${escapeHtml(f.name)}</p>
+                    <p class="text-xs ${f.inGame ? 'text-green-400' : 'text-gray-500'} truncate">${f.inGame ? `Jogando ${escapeHtml(f.inGame)}` : escapeHtml(f.personaStateLabel)}</p>
+                </div>
+            </a>`).join('');
+    } catch (err) {
+        feed.innerHTML = '';
+    }
+}
+
 // --- INTERFACE E NAVEGAÇÃO ---
 
 function filterGames(category) {
@@ -506,6 +579,8 @@ async function loadSteamUser() {
             `;
             await loadGames();
             loadNews();
+            loadRecentlyPlayed();
+            loadFriends();
             importSteamLibrary();
         } else {
             appShell.classList.add('hidden');
