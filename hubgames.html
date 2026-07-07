@@ -244,6 +244,24 @@
         </div>
     </div>
 
+    <!-- MODAL DE BIBLIOTECA DO AMIGO -->
+    <div id="friendLibraryModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4 modal-overlay" onclick="if(event.target===this)closeFriendLibraryModal()">
+        <div class="glass w-full max-w-2xl max-h-[85vh] flex flex-col p-8 rounded-2xl border border-gray-700 shadow-2xl modal-box" onclick="event.stopPropagation()">
+            <div class="flex items-center gap-3 mb-1">
+                <img id="friendLibraryAvatar" src="" class="w-10 h-10 rounded-full border border-gray-700">
+                <div>
+                    <h3 id="friendLibraryTitle" class="text-xl font-bold"></h3>
+                    <p id="friendLibraryMeta" class="text-sm text-gray-400"></p>
+                </div>
+            </div>
+            <div id="friendLibraryBody" class="mt-4 space-y-2 overflow-y-auto custom-scroll pr-2 flex-1"></div>
+            <div class="flex items-center mt-6">
+                <a id="friendLibraryLink" href="#" target="_blank" rel="noopener noreferrer" class="text-sm text-red-400 hover:text-red-300 transition font-semibold">Ver perfil na Steam ↗</a>
+                <button type="button" onclick="closeFriendLibraryModal()" class="px-6 py-2 text-gray-400 hover:text-white transition ml-auto">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Script externo -->
     <script src="script.js"></script>
 </body>

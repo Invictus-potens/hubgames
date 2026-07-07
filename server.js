@@ -343,18 +343,24 @@ app.get('/api/games/:id/achievements', requireAuth, async (req, res) => {
 
 const PERSONA_STATE_LABELS = ['Offline', 'Online', 'Ocupado', 'Ausente', 'Dormindo', 'Buscando troca', 'Buscando jogo'];
 
+// null = lista de amigos privada
+async function getFriendIds(steamId) {
+    const friendsUrl = `https://api.steampowered.com/ISteamUser/GetFriendList/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&relationship=friend`;
+    const friendsRes = await fetch(friendsUrl);
+    if (!friendsRes.ok) return null;
+    const friendsData = await friendsRes.json();
+    return (friendsData.friendslist?.friends || []).map(f => f.steamid);
+}
+
 app.get('/api/friends', requireAuth, async (req, res) => {
     const steamId = req.user.id;
 
     try {
-        const friendsUrl = `https://api.steampowered.com/ISteamUser/GetFriendList/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&relationship=friend`;
-        const friendsRes = await fetch(friendsUrl);
-        if (!friendsRes.ok) {
+        const friendIds = await getFriendIds(steamId);
+        if (friendIds === null) {
             // Lista de amigos privada nas configurações de privacidade da Steam
             return res.json({ friends: [], private: true });
         }
-        const friendsData = await friendsRes.json();
-        const friendIds = (friendsData.friendslist?.friends || []).map(f => f.steamid);
 
         if (friendIds.length === 0) return res.json({ friends: [] });
 
@@ -386,6 +392,49 @@ app.get('/api/friends', requireAuth, async (req, res) => {
             });
 
         res.json({ friends });
+    } catch (err) {
+        res.status(502).json({ error: 'steam_api_error' });
+    }
+});
+
+app.get('/api/friends/:steamId/library', requireAuth, async (req, res) => {
+    const steamId = req.user.id;
+    const friendSteamId = req.params.steamId;
+
+    try {
+        const friendIds = await getFriendIds(steamId);
+        if (!friendIds || !friendIds.includes(friendSteamId)) {
+            return res.status(404).json({ error: 'not_a_friend' });
+        }
+
+        const dbUser = await getDbUser(req);
+        const [friendRes, myGames] = await Promise.all([
+            fetch(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${STEAM_API_KEY}&steamid=${friendSteamId}&include_appinfo=1&include_played_free_games=1&format=json`),
+            prisma.game.findMany({ where: { userId: dbUser.id, appid: { not: null } } })
+        ]);
+        const friendData = await friendRes.json();
+        const friendGames = friendData.response?.games;
+
+        if (friendGames === undefined) {
+            // Biblioteca do amigo está privada
+            return res.json({ private: true, games: [], common: [] });
+        }
+
+        const myAppids = new Set(myGames.map(g => g.appid));
+
+        const games = friendGames
+            .map(g => ({
+                appid: g.appid,
+                name: g.name,
+                cover: `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.appid}/header.jpg`,
+                playtimeForever: g.playtime_forever || 0,
+                common: myAppids.has(g.appid)
+            }))
+            .sort((a, b) => Number(b.common) - Number(a.common) || b.playtimeForever - a.playtimeForever);
+
+        const common = games.filter(g => g.common);
+
+        res.json({ games, common, totalGames: games.length, commonCount: common.length });
     } catch (err) {
         res.status(502).json({ error: 'steam_api_error' });
     }

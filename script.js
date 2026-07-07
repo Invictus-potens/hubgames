@@ -498,25 +498,28 @@ const PERSONA_STATE_COLORS = {
     6: 'bg-green-500'
 };
 
+let friendsList = [];
+
 async function loadFriends() {
     const feed = document.getElementById('friendsFeed');
     try {
         const res = await fetch('/api/friends');
         if (!res.ok) { feed.innerHTML = ''; return; }
         const { friends, private: isPrivate } = await res.json();
+        friendsList = friends || [];
 
         if (isPrivate) {
             feed.innerHTML = '<p class="text-gray-500 text-sm">Sua lista de amigos está privada na Steam (Perfil > Editar Perfil > Privacidade > "Lista de amigos").</p>';
             return;
         }
 
-        if (friends.length === 0) {
+        if (friendsList.length === 0) {
             feed.innerHTML = '<p class="text-gray-500 text-sm">Nenhum amigo encontrado.</p>';
             return;
         }
 
-        feed.innerHTML = friends.map(f => `
-            <a href="${escapeHtml(f.profileUrl)}" target="_blank" rel="noopener noreferrer" class="min-w-[220px] max-w-[220px] gx-card border border-gray-800 rounded-lg overflow-hidden glass p-3 flex items-center gap-3">
+        feed.innerHTML = friendsList.map((f, i) => `
+            <button type="button" onclick="openFriendLibrary(${i})" class="min-w-[220px] max-w-[220px] text-left gx-card border border-gray-800 rounded-lg overflow-hidden glass p-3 flex items-center gap-3 cursor-pointer">
                 <div class="relative shrink-0">
                     <img src="${escapeHtml(f.avatar)}" class="w-12 h-12 rounded-full border border-gray-700">
                     <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-gray-900 ${PERSONA_STATE_COLORS[f.personaState] || 'bg-gray-600'}"></span>
@@ -525,10 +528,66 @@ async function loadFriends() {
                     <p class="text-sm font-semibold truncate">${escapeHtml(f.name)}</p>
                     <p class="text-xs ${f.inGame ? 'text-green-400' : 'text-gray-500'} truncate">${f.inGame ? `Jogando ${escapeHtml(f.inGame)}` : escapeHtml(f.personaStateLabel)}</p>
                 </div>
-            </a>`).join('');
+            </button>`).join('');
     } catch (err) {
         feed.innerHTML = '';
     }
+}
+
+async function openFriendLibrary(index) {
+    const friend = friendsList[index];
+    if (!friend) return;
+
+    document.getElementById('friendLibraryAvatar').src = friend.avatar;
+    document.getElementById('friendLibraryTitle').textContent = friend.name;
+    document.getElementById('friendLibraryMeta').textContent = 'Carregando biblioteca...';
+    document.getElementById('friendLibraryLink').href = friend.profileUrl;
+
+    const body = document.getElementById('friendLibraryBody');
+    body.innerHTML = '';
+
+    document.getElementById('friendLibraryModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    try {
+        const res = await fetch(`/api/friends/${friend.steamId}/library`);
+        if (!res.ok) {
+            document.getElementById('friendLibraryMeta').textContent = 'Não foi possível carregar a biblioteca.';
+            return;
+        }
+        const { games, common, totalGames, commonCount, private: isPrivate } = await res.json();
+
+        if (isPrivate) {
+            document.getElementById('friendLibraryMeta').textContent = 'Biblioteca privada na Steam.';
+            return;
+        }
+
+        document.getElementById('friendLibraryMeta').textContent =
+            `${totalGames} jogos na biblioteca · ${commonCount} em comum com você`;
+
+        if (games.length === 0) {
+            body.innerHTML = '<p class="text-gray-500 text-sm">Nenhum jogo encontrado.</p>';
+            return;
+        }
+
+        body.innerHTML = games.map(g => {
+            const hours = Math.round((g.playtimeForever / 60) * 10) / 10;
+            return `
+                <div class="flex items-center gap-3 p-2 rounded-lg ${g.common ? 'bg-red-500/10 border border-red-500/30' : 'border border-gray-800'}">
+                    <img src="${escapeHtml(g.cover)}" loading="lazy" class="w-16 h-8 object-cover rounded">
+                    <p class="text-sm flex-1 truncate">${escapeHtml(g.name)}</p>
+                    ${g.common ? '<span class="text-xs text-red-400 font-semibold shrink-0">Em comum</span>' : ''}
+                    <span class="text-xs text-gray-500 shrink-0">${hours}h</span>
+                </div>`;
+        }).join('');
+    } catch (err) {
+        document.getElementById('friendLibraryMeta').textContent = 'Não foi possível carregar a biblioteca.';
+    }
+}
+
+function closeFriendLibraryModal() {
+    document.getElementById('friendLibraryModal').classList.add('hidden');
+    document.body.style.overflow = '';
 }
 
 // --- INTERFACE E NAVEGAÇÃO ---

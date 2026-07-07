@@ -32,8 +32,9 @@
 5. **Reviews/avaliações pessoais**
    - Nota + comentário por jogo, visível no perfil
 
-6. **Sistema de amigos**
-   - Ver bibliotecas de amigos, jogos em comum
+6. **Sistema de amigos** ✅ concluído
+   - Lista de amigos com status online e jogo atual
+   - Ver biblioteca de um amigo e jogos em comum
 
 7. **Listas compartilháveis**
    - Ex.: "meus favoritos de 2026", com link público
