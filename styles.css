@@ -57,6 +57,35 @@ body {
     transform: translateY(20px);
 }
 
+/* --- Conteúdo HTML das notícias (BBCode/HTML da Steam sanitizado) --- */
+.news-modal-body p {
+    margin-bottom: 0.75rem;
+}
+
+.news-modal-body ul,
+.news-modal-body ol {
+    margin: 0.5rem 0 0.75rem 1.25rem;
+    list-style: disc;
+}
+
+.news-modal-body h1,
+.news-modal-body h2,
+.news-modal-body h3,
+.news-modal-body h4 {
+    font-weight: 700;
+    color: #fff;
+    margin: 1rem 0 0.5rem;
+}
+
+.news-modal-body hr {
+    border-color: rgba(255, 255, 255, 0.1);
+    margin: 1rem 0;
+}
+
+.news-modal-body img {
+    display: block;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to   { opacity: 1; }

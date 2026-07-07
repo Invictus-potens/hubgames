@@ -428,7 +428,12 @@ function openNewsModal(index) {
     document.getElementById('newsModalTitle').textContent = n.title;
     document.getElementById('newsModalMeta').textContent =
         `${n.gameTitle} · ${new Date(n.date * 1000).toLocaleDateString('pt-BR')}${n.feedlabel ? ` · ${n.feedlabel}` : ''}`;
-    document.getElementById('newsModalBody').textContent = n.contents || 'Sem conteúdo disponível.';
+    const body = document.getElementById('newsModalBody');
+    if (n.contentsHtml && n.contentsHtml.trim()) {
+        body.innerHTML = n.contentsHtml;
+    } else {
+        body.textContent = n.contents || 'Sem conteúdo disponível.';
+    }
 
     const link = document.getElementById('newsModalLink');
     if (n.url) {

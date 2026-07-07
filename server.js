@@ -8,6 +8,7 @@ const passport = require('passport');
 const SteamStrategy = require('passport-steam').Strategy;
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
+const { JSDOM } = require('jsdom');
 
 const { STEAM_API_KEY, STEAM_DOMAIN, SESSION_SECRET, PORT, NODE_ENV, DATABASE_URL, RAWG_API_KEY } = process.env;
 
@@ -343,6 +344,92 @@ app.get('/api/games/:id/achievements', requireAuth, async (req, res) => {
 const NEWS_CACHE_TTL = 30 * 60 * 1000;
 const newsCache = new Map();
 
+const STEAM_CLAN_IMAGE_BASE = 'https://clan.cloudflare.steamstatic.com/images/';
+
+// A API da Steam mistura BBCode e HTML no corpo das notícias; convertemos o BBCode
+// suportado para HTML antes de sanitizar, para preservar imagens/links/formatação.
+function bbcodeToHtml(raw) {
+    let text = raw || '';
+    text = text.replace(/\{STEAM_CLAN_IMAGE\}/gi, STEAM_CLAN_IMAGE_BASE);
+    text = text.replace(/\{STEAM_CLAN_LOC_IMAGE\}/gi, STEAM_CLAN_IMAGE_BASE);
+    text = text.replace(/\[img\](.*?)\[\/img\]/gis, '<img src="$1">');
+    text = text.replace(/\[url=(.*?)\](.*?)\[\/url\]/gis, '<a href="$1">$2</a>');
+    text = text.replace(/\[b\](.*?)\[\/b\]/gis, '<b>$1</b>');
+    text = text.replace(/\[i\](.*?)\[\/i\]/gis, '<i>$1</i>');
+    text = text.replace(/\[u\](.*?)\[\/u\]/gis, '<u>$1</u>');
+    text = text.replace(/\[strike\](.*?)\[\/strike\]/gis, '<s>$1</s>');
+    text = text.replace(/\[h1\](.*?)\[\/h1\]/gis, '<h3>$1</h3>');
+    text = text.replace(/\[list\]/gi, '<ul>').replace(/\[\/list\]/gi, '</ul>');
+    text = text.replace(/\[\*\]/gi, '<li>');
+    text = text.replace(/\[hr\]\[\/hr\]|\[hr\]/gi, '<hr>');
+    text = text.replace(/\[previewyoutube=([^;\]]+)[^\]]*\]\[\/previewyoutube\]/gi,
+        '<a href="https://www.youtube.com/watch?v=$1">Ver vídeo no YouTube ↗</a>');
+    // remove qualquer tag BBCode remanescente que não tratamos
+    text = text.replace(/\[\/?[a-z0-9=_;:\-\s"'.%]*\]/gi, '');
+    return text;
+}
+
+const NEWS_ALLOWED_TAGS = new Set(['P', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'S', 'UL', 'OL', 'LI', 'H1', 'H2', 'H3', 'H4', 'HR', 'A', 'IMG', 'DIV', 'SPAN']);
+
+function sanitizeNewsHtml(html) {
+    const dom = new JSDOM(`<div id="root">${html}</div>`);
+    const document = dom.window.document;
+    const root = document.getElementById('root');
+
+    // Guarda href/src originais antes que a limpeza de atributos os apague
+    const hrefs = new Map();
+    const srcs = new Map();
+    root.querySelectorAll('a[href]').forEach(a => hrefs.set(a, a.getAttribute('href')));
+    root.querySelectorAll('img[src]').forEach(img => srcs.set(img, img.getAttribute('src')));
+
+    const walk = (node) => {
+        [...node.childNodes].forEach(child => {
+            if (child.nodeType === 8) { // comment
+                node.removeChild(child);
+                return;
+            }
+            if (child.nodeType !== 1) return; // texto: mantém
+
+            if (!NEWS_ALLOWED_TAGS.has(child.tagName)) {
+                // tag não permitida: descarta a tag mas preserva o conteúdo
+                while (child.firstChild) node.insertBefore(child.firstChild, child);
+                node.removeChild(child);
+                return;
+            }
+
+            if (child.tagName === 'A' && hrefs.has(child)) {
+                const href = hrefs.get(child);
+                [...child.attributes].forEach(attr => child.removeAttribute(attr.name));
+                if (/^https?:\/\//i.test(href)) {
+                    child.setAttribute('href', href);
+                    child.setAttribute('target', '_blank');
+                    child.setAttribute('rel', 'noopener noreferrer');
+                    child.classList.add('text-red-400', 'hover:text-red-300', 'underline');
+                }
+            } else if (child.tagName === 'IMG' && srcs.has(child)) {
+                const src = srcs.get(child);
+                [...child.attributes].forEach(attr => child.removeAttribute(attr.name));
+                if (/^https?:\/\//i.test(src)) {
+                    child.setAttribute('src', src);
+                    child.setAttribute('loading', 'lazy');
+                    child.classList.add('rounded-lg', 'my-3', 'max-w-full');
+                } else {
+                    node.removeChild(child);
+                    return;
+                }
+            } else {
+                [...child.attributes].forEach(attr => child.removeAttribute(attr.name));
+            }
+
+            walk(child);
+        });
+    };
+
+    walk(root);
+
+    return root.innerHTML.trim();
+}
+
 async function getAppNews(appid) {
     const cached = newsCache.get(appid);
     if (cached && Date.now() - cached.fetchedAt < NEWS_CACHE_TTL) return cached.items;
@@ -356,8 +443,10 @@ async function getAppNews(appid) {
         gid: n.gid,
         title: n.title,
         url: /^https?:\/\//.test(n.url || '') ? n.url : null,
-        // Steam devolve BBCode/HTML misturado no corpo — vira texto puro
+        // texto puro para o preview do card
         contents: (n.contents || '').replace(/\[[^\]]*\]/g, '').replace(/<[^>]*>/g, '').trim(),
+        // HTML sanitizado (com imagens/links) para o modal
+        contentsHtml: sanitizeNewsHtml(bbcodeToHtml(n.contents || '')),
         feedlabel: n.feedlabel,
         date: n.date
     }));
