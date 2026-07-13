@@ -5,15 +5,55 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GameVault | Gerenciador de Jogos</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Tema "Steam clássica": remapeia as escalas de cor usadas no markup
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gray: {
+                            300: '#E5E7EB',
+                            400: '#D1D5DB',
+                            500: '#A9B4A5',
+                            600: '#5E735F',
+                            700: '#4D634E',
+                            800: '#4D634E',
+                            900: '#2D3A2E'
+                        },
+                        red: {
+                            400: '#D6C56A',
+                            500: '#C4B04B',
+                            600: '#C4B04B',
+                            700: '#A8963C'
+                        },
+                        purple: {
+                            400: '#D6C56A',
+                            500: '#C4B04B',
+                            600: '#A8963C'
+                        },
+                        yellow: {
+                            400: '#C4B04B',
+                            500: '#C4B04B',
+                            600: '#A8963C'
+                        },
+                        green: {
+                            400: '#8BC53F',
+                            500: '#79AC33'
+                        }
+                    }
+                }
+            }
+        };
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="min-h-screen pb-20">
 
     <!-- TELA DE LOGIN -->
-    <div id="loginScreen" class="fixed inset-0 z-[300] flex items-center justify-center bg-black">
+    <div id="loginScreen" class="fixed inset-0 z-[300] flex items-center justify-center bg-[#2D3A2E]">
         <div class="glass w-full max-w-sm p-10 rounded-2xl border border-gray-700 shadow-2xl text-center">
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-red-500 to-purple-600 bg-clip-text text-transparent mb-2">
+            <h1 class="text-3xl font-bold text-[#C4B04B] mb-2">
                 GAMEVAULT
             </h1>
             <p class="text-gray-400 text-sm mb-8">Faça login com sua conta Steam para acessar seu acervo de jogos.</p>
@@ -28,7 +68,7 @@
         <!-- Header / Navbar -->
         <nav class="px-6 py-4 border-b border-gray-800 glass sticky top-0 z-50">
             <div class="flex justify-between items-center gap-4 flex-wrap">
-                <h1 class="text-2xl font-bold bg-gradient-to-r from-red-500 to-purple-600 bg-clip-text text-transparent">
+                <h1 class="text-2xl font-bold text-[#C4B04B]">
                     GAMEVAULT
                 </h1>
                 <div id="mainTabs" role="tablist" class="flex gap-1 order-3 w-full lg:order-none lg:w-auto overflow-x-auto custom-scroll">
@@ -39,9 +79,6 @@
                 </div>
                 <div class="flex items-center gap-3">
                     <div id="steamAuthArea"></div>
-                    <button onclick="openModal()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-all">
-                        + Adicionar Jogo
-                    </button>
                 </div>
             </div>
         </nav>
@@ -162,7 +199,7 @@
                             <option value="backlog">Backlog</option>
                             <option value="all">Todos os jogos</option>
                         </select>
-                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-all">
+                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-[#232B1E] px-4 py-2 rounded-lg font-semibold transition-all">
                             Criar Lista
                         </button>
                     </form>
@@ -188,7 +225,7 @@
         <!-- Backdrop + botão flutuante (mobile) -->
         <div id="friendsBackdrop" onclick="toggleFriendsSidebar()" class="hidden fixed inset-0 bg-black/60 z-[59] lg:hidden"></div>
         <button id="friendsFab" onclick="toggleFriendsSidebar()" class="lg:hidden fixed bottom-5 right-5 z-[55] w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 shadow-lg flex items-center justify-center transition" aria-label="Abrir barra de amigos">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a4 4 0 11-4-4"></path></svg>
+            <svg class="w-5 h-5 text-[#232B1E]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a4 4 0 11-4-4"></path></svg>
             <span id="friendsFabBadge" class="hidden absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-green-500 text-[10px] font-bold text-black items-center justify-center"></span>
         </button>
     </div>
@@ -239,7 +276,7 @@
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
                     <button type="button" onclick="closeModal()" class="px-6 py-2 text-gray-400 hover:text-white transition">Cancelar</button>
-                    <button type="submit" class="bg-red-600 px-6 py-2 rounded-lg font-bold hover:bg-red-700 transition">Salvar Jogo</button>
+                    <button type="submit" class="bg-red-600 text-[#232B1E] px-6 py-2 rounded-lg font-bold hover:bg-red-700 transition">Salvar Jogo</button>
                 </div>
             </form>
         </div>
@@ -257,7 +294,7 @@
             <p id="deleteGameName" class="text-gray-400 mb-6">Tem certeza que deseja remover este jogo?</p>
             <div class="flex justify-center gap-3">
                 <button onclick="closeDeleteModal()" class="px-6 py-2.5 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-800 transition font-semibold">Cancelar</button>
-                <button id="confirmDeleteBtn" class="px-6 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition font-bold">Sim, Remover</button>
+                <button id="confirmDeleteBtn" class="px-6 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-[#232B1E] transition font-bold">Sim, Remover</button>
             </div>
         </div>
     </div>

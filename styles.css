@@ -5,8 +5,8 @@
 /* --- Reset e Base --- */
 body {
     font-family: 'Inter', sans-serif;
-    background-color: #0b0e14;
-    color: #e2e8f0;
+    background-color: #3A4B3B;
+    color: #D1D5DB;
 }
 
 /* --- Custom Scrollbar --- */
@@ -15,11 +15,11 @@ body {
 }
 
 .custom-scroll::-webkit-scrollbar-track {
-    background: #1a202c;
+    background: #2D3A2E;
 }
 
 .custom-scroll::-webkit-scrollbar-thumb {
-    background: #4a5568;
+    background: #4D634E;
     border-radius: 10px;
 }
 
@@ -27,7 +27,7 @@ body {
 .gx-card:hover {
     transform: translateY(-5px);
     transition: all 0.3s ease;
-    border-color: #ff0050;
+    border-color: #C4B04B;
 }
 
 /* --- Glassmorphism --- */
@@ -108,7 +108,7 @@ body {
     border-radius: 0.5rem;
     font-size: 0.875rem;
     font-weight: 600;
-    color: #9ca3af;
+    color: #A9B4A5;
     white-space: nowrap;
     transition: color 0.2s ease, background-color 0.2s ease;
 }
@@ -118,8 +118,8 @@ body {
 }
 
 .tab-btn.active {
-    color: #f87171;
-    background: rgba(220, 38, 38, 0.12);
+    color: #C4B04B;
+    background: rgba(196, 176, 75, 0.14);
 }
 
 /* --- Sidebar de Amigos --- */
@@ -130,7 +130,7 @@ body {
     bottom: 0;
     width: 288px;
     z-index: 60;
-    background: rgba(13, 16, 23, 0.94);
+    background: rgba(45, 58, 46, 0.96);
     backdrop-filter: blur(12px);
     transition: width 0.25s ease, transform 0.25s ease;
 }

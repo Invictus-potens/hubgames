@@ -550,7 +550,7 @@ function renderFriends() {
                 class="friend-item w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition text-left cursor-pointer">
                 <div class="relative shrink-0">
                     <img src="${escapeHtml(f.avatar)}" class="w-8 h-8 rounded-full border border-gray-700 ${rank === 2 ? 'grayscale opacity-60' : ''}">
-                    <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0d1017] ${PERSONA_STATE_COLORS[f.personaState] || 'bg-gray-600'}"></span>
+                    <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#2D3A2E] ${PERSONA_STATE_COLORS[f.personaState] || 'bg-gray-600'}"></span>
                 </div>
                 <div class="friend-item-info min-w-0 flex-1">
                     <p class="text-sm font-semibold truncate ${rank === 2 ? 'text-gray-400' : ''}">${escapeHtml(f.name)}</p>
