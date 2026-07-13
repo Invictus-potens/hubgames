@@ -26,145 +26,171 @@
 
     <div id="appShell" class="hidden">
         <!-- Header / Navbar -->
-        <nav class="p-6 border-b border-gray-800 flex justify-between items-center glass sticky top-0 z-50">
-            <h1 class="text-2xl font-bold bg-gradient-to-r from-red-500 to-purple-600 bg-clip-text text-transparent">
-                GAMEVAULT
-            </h1>
-            <div class="flex items-center gap-3">
-                <div id="steamAuthArea"></div>
-                <button onclick="openModal()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-all">
-                    + Adicionar Jogo
-                </button>
+        <nav class="px-6 py-4 border-b border-gray-800 glass sticky top-0 z-50">
+            <div class="flex justify-between items-center gap-4 flex-wrap">
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-red-500 to-purple-600 bg-clip-text text-transparent">
+                    GAMEVAULT
+                </h1>
+                <div id="mainTabs" role="tablist" class="flex gap-1 order-3 w-full lg:order-none lg:w-auto overflow-x-auto custom-scroll">
+                    <button type="button" role="tab" data-tab="biblioteca" onclick="switchTab('biblioteca')" class="tab-btn active" aria-selected="true">Biblioteca</button>
+                    <button type="button" role="tab" data-tab="dashboard" onclick="switchTab('dashboard')" class="tab-btn" aria-selected="false">Dashboard</button>
+                    <button type="button" role="tab" data-tab="noticias" onclick="switchTab('noticias')" class="tab-btn" aria-selected="false">Notícias</button>
+                    <button type="button" role="tab" data-tab="listas" onclick="switchTab('listas')" class="tab-btn" aria-selected="false">Listas</button>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div id="steamAuthArea"></div>
+                    <button onclick="openModal()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-all">
+                        + Adicionar Jogo
+                    </button>
+                </div>
             </div>
         </nav>
 
         <main class="max-w-7xl mx-auto px-4 py-8">
 
-            <div id="libraryWarning" class="hidden mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-600/40 text-yellow-400 text-sm"></div>
+            <!-- TAB: BIBLIOTECA -->
+            <div id="tab-panel-biblioteca" class="tab-panel">
+                <div id="libraryWarning" class="hidden mb-8 p-4 rounded-lg bg-yellow-500/10 border border-yellow-600/40 text-yellow-400 text-sm"></div>
 
-            <!-- SECTION: DASHBOARD PESSOAL -->
-            <section class="mb-12">
-                <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
-                    <span class="w-2 h-6 bg-red-600 rounded-full"></span>
-                    Meu Dashboard
-                </h2>
-                <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-                    <div class="glass p-4 rounded-xl border border-gray-800 text-center">
-                        <p id="statTotalHours" class="text-2xl font-black text-red-500">0h</p>
-                        <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Horas Jogadas</p>
+                <section>
+                    <div class="flex flex-wrap gap-4 mb-6">
+                        <input id="searchInput" type="text" placeholder="Buscar por nome..." oninput="onSearchInput()"
+                            class="flex-1 min-w-[200px] bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none focus:border-red-500 transition">
+                        <select id="genreFilter" onchange="renderGames(currentFilter)"
+                            class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none focus:border-red-500 transition">
+                            <option value="">Todos os gêneros</option>
+                        </select>
+                        <select id="yearFilter" onchange="renderGames(currentFilter)"
+                            class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none focus:border-red-500 transition">
+                            <option value="">Todos os anos</option>
+                        </select>
                     </div>
-                    <div class="glass p-4 rounded-xl border border-gray-800 text-center">
-                        <p id="statTotalGames" class="text-2xl font-black text-red-500">0</p>
-                        <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Jogos na Coleção</p>
+                    <div class="flex flex-wrap gap-4 mb-8 border-b border-gray-800 pb-4">
+                        <button onclick="filterGames('all')" class="category-btn active text-red-500 font-bold">Todos</button>
+                        <button onclick="filterGames('playing')" class="category-btn hover:text-red-400 transition">Estou Jogando</button>
+                        <button onclick="filterGames('played')" class="category-btn hover:text-red-400 transition">Já Joguei</button>
+                        <button onclick="filterGames('backlog')" class="category-btn hover:text-red-400 transition">Backlog</button>
+                        <button onclick="filterGames('completed')" class="category-btn hover:text-red-400 transition">✔ Completados</button>
+                        <button onclick="filterGames('old')" class="category-btn hover:text-red-400 transition">Jogos Antigos</button>
+                        <button onclick="filterGames('new')" class="category-btn hover:text-red-400 transition">Novos Adquiridos</button>
+                        <button onclick="filterGames('fav')" class="category-btn hover:text-red-400 transition">⭐ Favoritos</button>
                     </div>
-                    <div class="glass p-4 rounded-xl border border-gray-800 text-center">
-                        <p id="statCompleted" class="text-2xl font-black text-red-500">0</p>
-                        <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Completados</p>
+
+                    <!-- GRID DE JOGOS -->
+                    <div id="gamesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Jogos da biblioteca injetados aqui -->
                     </div>
-                    <div class="glass p-4 rounded-xl border border-gray-800 text-center">
-                        <p id="statPlaying" class="text-2xl font-black text-red-500">0</p>
-                        <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Jogando Agora</p>
+                </section>
+            </div>
+
+            <!-- TAB: DASHBOARD -->
+            <div id="tab-panel-dashboard" class="tab-panel hidden">
+                <section class="mb-12">
+                    <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                        <span class="w-2 h-6 bg-red-600 rounded-full"></span>
+                        Meu Dashboard
+                    </h2>
+                    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                        <div class="glass p-4 rounded-xl border border-gray-800 text-center">
+                            <p id="statTotalHours" class="text-2xl font-black text-red-500">0h</p>
+                            <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Horas Jogadas</p>
+                        </div>
+                        <div class="glass p-4 rounded-xl border border-gray-800 text-center">
+                            <p id="statTotalGames" class="text-2xl font-black text-red-500">0</p>
+                            <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Jogos na Coleção</p>
+                        </div>
+                        <div class="glass p-4 rounded-xl border border-gray-800 text-center">
+                            <p id="statCompleted" class="text-2xl font-black text-red-500">0</p>
+                            <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Completados</p>
+                        </div>
+                        <div class="glass p-4 rounded-xl border border-gray-800 text-center">
+                            <p id="statPlaying" class="text-2xl font-black text-red-500">0</p>
+                            <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Jogando Agora</p>
+                        </div>
+                        <div class="glass p-4 rounded-xl border border-gray-800 text-center">
+                            <p id="statBacklog" class="text-2xl font-black text-red-500">0</p>
+                            <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Backlog</p>
+                        </div>
                     </div>
-                    <div class="glass p-4 rounded-xl border border-gray-800 text-center">
-                        <p id="statBacklog" class="text-2xl font-black text-red-500">0</p>
-                        <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Backlog</p>
+                    <div id="recentActivity" class="space-y-3"></div>
+                </section>
+
+                <section class="mb-12">
+                    <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                        <span class="w-2 h-6 bg-red-600 rounded-full"></span>
+                        Jogados Recentemente
+                    </h2>
+                    <div id="recentlyPlayedFeed" class="flex gap-4 overflow-x-auto pb-4 custom-scroll"></div>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                        <span class="w-2 h-6 bg-red-600 rounded-full"></span>
+                        Calendário de Estreias
+                    </h2>
+                    <div id="releaseCalendar" class="flex gap-4 overflow-x-auto pb-4 custom-scroll">
+                        <!-- Cards de lançamentos injetados aqui -->
                     </div>
-                </div>
-                <div id="recentActivity" class="space-y-3"></div>
-            </section>
+                </section>
+            </div>
 
-            <!-- SECTION: NOTÍCIAS DOS JOGOS -->
-            <section class="mb-12">
-                <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
-                    <span class="w-2 h-6 bg-red-600 rounded-full"></span>
-                    Notícias dos Seus Jogos
-                </h2>
-                <div id="newsFeed" class="flex gap-4 overflow-x-auto pb-4 custom-scroll"></div>
-            </section>
+            <!-- TAB: NOTÍCIAS -->
+            <div id="tab-panel-noticias" class="tab-panel hidden">
+                <section>
+                    <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                        <span class="w-2 h-6 bg-red-600 rounded-full"></span>
+                        Notícias dos Seus Jogos
+                    </h2>
+                    <div id="newsFeed" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+                </section>
+            </div>
 
-            <!-- SECTION: JOGADOS RECENTEMENTE -->
-            <section class="mb-12">
-                <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
-                    <span class="w-2 h-6 bg-red-600 rounded-full"></span>
-                    Jogados Recentemente
-                </h2>
-                <div id="recentlyPlayedFeed" class="flex gap-4 overflow-x-auto pb-4 custom-scroll"></div>
-            </section>
-
-            <!-- SECTION: AMIGOS -->
-            <section class="mb-12">
-                <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
-                    <span class="w-2 h-6 bg-red-600 rounded-full"></span>
-                    Amigos
-                </h2>
-                <div id="friendsFeed" class="flex gap-4 overflow-x-auto pb-4 custom-scroll"></div>
-            </section>
-
-            <!-- SECTION: LISTAS COMPARTILHÁVEIS -->
-            <section class="mb-12">
-                <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
-                    <span class="w-2 h-6 bg-red-600 rounded-full"></span>
-                    Listas Compartilháveis
-                </h2>
-                <form id="shareListForm" class="flex flex-wrap gap-3 mb-4">
-                    <input id="shareListTitle" type="text" placeholder="Ex: Meus favoritos de 2026" required
-                        class="flex-1 min-w-[200px] bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none focus:border-red-500 transition">
-                    <select id="shareListFilter" class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none">
-                        <option value="favorite">Favoritos</option>
-                        <option value="completed">Completados</option>
-                        <option value="playing">Jogando</option>
-                        <option value="backlog">Backlog</option>
-                        <option value="all">Todos os jogos</option>
-                    </select>
-                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-all">
-                        Criar Lista
-                    </button>
-                </form>
-                <div id="shareListsContainer" class="space-y-2"></div>
-            </section>
-
-            <!-- SECTION: CALENDÁRIO DE ESTREIAS (Estilo Opera GX) -->
-            <section class="mb-12">
-                <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
-                    <span class="w-2 h-6 bg-red-600 rounded-full"></span>
-                    Calendário de Estreias
-                </h2>
-                <div id="releaseCalendar" class="flex gap-4 overflow-x-auto pb-4 custom-scroll">
-                    <!-- Cards de lançamentos injetados aqui -->
-                </div>
-            </section>
-
-            <!-- SECTION: FILTROS E CATEGORIAS -->
-            <section>
-                <div class="flex flex-wrap gap-4 mb-6">
-                    <input id="searchInput" type="text" placeholder="Buscar por nome..." oninput="onSearchInput()"
-                        class="flex-1 min-w-[200px] bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none focus:border-red-500 transition">
-                    <select id="genreFilter" onchange="renderGames(currentFilter)"
-                        class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none focus:border-red-500 transition">
-                        <option value="">Todos os gêneros</option>
-                    </select>
-                    <select id="yearFilter" onchange="renderGames(currentFilter)"
-                        class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none focus:border-red-500 transition">
-                        <option value="">Todos os anos</option>
-                    </select>
-                </div>
-                <div class="flex flex-wrap gap-4 mb-8 border-b border-gray-800 pb-4">
-                    <button onclick="filterGames('all')" class="category-btn active text-red-500 font-bold">Todos</button>
-                    <button onclick="filterGames('playing')" class="category-btn hover:text-red-400 transition">Estou Jogando</button>
-                    <button onclick="filterGames('played')" class="category-btn hover:text-red-400 transition">Já Joguei</button>
-                    <button onclick="filterGames('backlog')" class="category-btn hover:text-red-400 transition">Backlog</button>
-                    <button onclick="filterGames('completed')" class="category-btn hover:text-red-400 transition">✔ Completados</button>
-                    <button onclick="filterGames('old')" class="category-btn hover:text-red-400 transition">Jogos Antigos</button>
-                    <button onclick="filterGames('new')" class="category-btn hover:text-red-400 transition">Novos Adquiridos</button>
-                    <button onclick="filterGames('fav')" class="category-btn hover:text-red-400 transition">⭐ Favoritos</button>
-                </div>
-
-                <!-- GRID DE JOGOS -->
-                <div id="gamesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <!-- Jogos da biblioteca injetados aqui -->
-                </div>
-            </section>
+            <!-- TAB: LISTAS -->
+            <div id="tab-panel-listas" class="tab-panel hidden">
+                <section>
+                    <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                        <span class="w-2 h-6 bg-red-600 rounded-full"></span>
+                        Listas Compartilháveis
+                    </h2>
+                    <form id="shareListForm" class="flex flex-wrap gap-3 mb-4">
+                        <input id="shareListTitle" type="text" placeholder="Ex: Meus favoritos de 2026" required
+                            class="flex-1 min-w-[200px] bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none focus:border-red-500 transition">
+                        <select id="shareListFilter" class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm outline-none">
+                            <option value="favorite">Favoritos</option>
+                            <option value="completed">Completados</option>
+                            <option value="playing">Jogando</option>
+                            <option value="backlog">Backlog</option>
+                            <option value="all">Todos os jogos</option>
+                        </select>
+                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-all">
+                            Criar Lista
+                        </button>
+                    </form>
+                    <div id="shareListsContainer" class="space-y-2"></div>
+                </section>
+            </div>
         </main>
+
+        <!-- SIDEBAR DE AMIGOS -->
+        <aside id="friendsSidebar" class="friends-sidebar border-l border-gray-800 flex flex-col">
+            <div class="friends-sidebar-header flex items-center gap-2 p-3 border-b border-gray-800 shrink-0">
+                <button onclick="toggleFriendsSidebar()" class="btn-icon bg-gray-500/10 hover:bg-gray-500/25 shrink-0" title="Expandir / recolher amigos" aria-label="Expandir ou recolher barra de amigos">
+                    <svg id="friendsToggleIcon" class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
+                </button>
+                <div class="friends-sidebar-label min-w-0">
+                    <p class="text-sm font-bold truncate">Amigos</p>
+                    <p id="friendsOnlineCount" class="text-xs text-gray-500 truncate"></p>
+                </div>
+            </div>
+            <div id="friendsFeed" class="flex-1 overflow-y-auto custom-scroll p-2 space-y-1"></div>
+        </aside>
+
+        <!-- Backdrop + botão flutuante (mobile) -->
+        <div id="friendsBackdrop" onclick="toggleFriendsSidebar()" class="hidden fixed inset-0 bg-black/60 z-[59] lg:hidden"></div>
+        <button id="friendsFab" onclick="toggleFriendsSidebar()" class="lg:hidden fixed bottom-5 right-5 z-[55] w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 shadow-lg flex items-center justify-center transition" aria-label="Abrir barra de amigos">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a4 4 0 11-4-4"></path></svg>
+            <span id="friendsFabBadge" class="hidden absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-green-500 text-[10px] font-bold text-black items-center justify-center"></span>
+        </button>
     </div>
 
     <!-- MODAL PARA ADICIONAR/EDITAR JOGO -->

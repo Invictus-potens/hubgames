@@ -402,15 +402,15 @@ async function loadNews() {
         newsItems = news;
 
         if (news.length === 0) {
-            feed.innerHTML = '<p class="text-gray-500 text-sm">Nenhuma notícia recente dos seus jogos (marque jogos como "Jogando", "Backlog", favoritos ou com prioridade 📰 para ver notícias deles).</p>';
+            feed.innerHTML = '<p class="col-span-full text-gray-500 text-sm">Nenhuma notícia recente dos seus jogos (marque jogos como "Jogando", "Backlog", favoritos ou com prioridade 📰 para ver notícias deles).</p>';
             return;
         }
 
         feed.innerHTML = news.map((n, i) => {
             const date = new Date(n.date * 1000).toLocaleDateString('pt-BR');
             return `
-                <button type="button" onclick="openNewsModal(${i})" class="min-w-[280px] max-w-[280px] text-left gx-card border border-gray-800 rounded-lg overflow-hidden glass cursor-pointer">
-                    <img src="${escapeHtml(n.cover || 'https://via.placeholder.com/280x112?text=Sem+Capa')}" loading="lazy" class="w-full h-28 object-cover">
+                <button type="button" onclick="openNewsModal(${i})" class="w-full text-left gx-card border border-gray-800 rounded-lg overflow-hidden glass cursor-pointer">
+                    <img src="${escapeHtml(n.cover || 'https://via.placeholder.com/280x112?text=Sem+Capa')}" loading="lazy" class="w-full h-36 object-cover">
                     <div class="p-3">
                         <p class="text-xs text-red-400 font-bold truncate">${escapeHtml(n.gameTitle)}</p>
                         <p class="text-sm font-semibold line-clamp-2 mt-1">${escapeHtml(n.title)}</p>
@@ -502,38 +502,109 @@ const PERSONA_STATE_COLORS = {
 };
 
 let friendsList = [];
+let friendsPrivate = false;
+let friendsPollTimer = null;
+const FRIENDS_POLL_MS = 30 * 1000;
+const FRIEND_GROUP_LABELS = ['Em jogo', 'Online', 'Offline'];
+
+function escapeAttr(text) {
+    return escapeHtml(text).replace(/"/g, '&quot;');
+}
+
+function friendRank(f) {
+    return f.inGame ? 0 : (f.personaState > 0 ? 1 : 2);
+}
+
+function renderFriends() {
+    const feed = document.getElementById('friendsFeed');
+    const countEl = document.getElementById('friendsOnlineCount');
+    const fabBadge = document.getElementById('friendsFabBadge');
+
+    if (friendsPrivate) {
+        countEl.textContent = 'Lista privada';
+        feed.innerHTML = '<p class="friends-empty text-gray-500 text-xs p-2">Sua lista de amigos está privada na Steam (Perfil > Editar Perfil > Privacidade > "Lista de amigos").</p>';
+        return;
+    }
+
+    const online = friendsList.filter(f => f.inGame || f.personaState > 0).length;
+    countEl.textContent = friendsList.length > 0 ? `${online} online · ${friendsList.length} no total` : '';
+    fabBadge.textContent = online;
+    fabBadge.classList.toggle('hidden', online === 0);
+    fabBadge.classList.toggle('flex', online > 0);
+
+    if (friendsList.length === 0) {
+        feed.innerHTML = '<p class="friends-empty text-gray-500 text-xs p-2">Nenhum amigo encontrado.</p>';
+        return;
+    }
+
+    let lastRank = -1;
+    feed.innerHTML = friendsList.map((f, i) => {
+        const rank = friendRank(f);
+        const header = rank !== lastRank
+            ? `<p class="friend-group-label text-[11px] uppercase tracking-widest text-gray-500 font-bold px-2 pt-3 pb-1">${FRIEND_GROUP_LABELS[rank]}</p>`
+            : '';
+        lastRank = rank;
+        const statusText = f.inGame ? `Jogando ${f.inGame}` : f.personaStateLabel;
+        return `${header}
+            <button type="button" onclick="openFriendLibrary(${i})" title="${escapeAttr(f.name)} — ${escapeAttr(statusText)}"
+                class="friend-item w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition text-left cursor-pointer">
+                <div class="relative shrink-0">
+                    <img src="${escapeHtml(f.avatar)}" class="w-8 h-8 rounded-full border border-gray-700 ${rank === 2 ? 'grayscale opacity-60' : ''}">
+                    <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0d1017] ${PERSONA_STATE_COLORS[f.personaState] || 'bg-gray-600'}"></span>
+                </div>
+                <div class="friend-item-info min-w-0 flex-1">
+                    <p class="text-sm font-semibold truncate ${rank === 2 ? 'text-gray-400' : ''}">${escapeHtml(f.name)}</p>
+                    <p class="text-xs ${f.inGame ? 'text-green-400' : 'text-gray-500'} truncate">${escapeHtml(statusText)}</p>
+                </div>
+            </button>`;
+    }).join('');
+}
 
 async function loadFriends() {
-    const feed = document.getElementById('friendsFeed');
     try {
         const res = await fetch('/api/friends');
-        if (!res.ok) { feed.innerHTML = ''; return; }
+        if (!res.ok) return; // mantém última lista renderizada
         const { friends, private: isPrivate } = await res.json();
+        friendsPrivate = Boolean(isPrivate);
         friendsList = friends || [];
-
-        if (isPrivate) {
-            feed.innerHTML = '<p class="text-gray-500 text-sm">Sua lista de amigos está privada na Steam (Perfil > Editar Perfil > Privacidade > "Lista de amigos").</p>';
-            return;
-        }
-
-        if (friendsList.length === 0) {
-            feed.innerHTML = '<p class="text-gray-500 text-sm">Nenhum amigo encontrado.</p>';
-            return;
-        }
-
-        feed.innerHTML = friendsList.map((f, i) => `
-            <button type="button" onclick="openFriendLibrary(${i})" class="min-w-[220px] max-w-[220px] text-left gx-card border border-gray-800 rounded-lg overflow-hidden glass p-3 flex items-center gap-3 cursor-pointer">
-                <div class="relative shrink-0">
-                    <img src="${escapeHtml(f.avatar)}" class="w-12 h-12 rounded-full border border-gray-700">
-                    <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-gray-900 ${PERSONA_STATE_COLORS[f.personaState] || 'bg-gray-600'}"></span>
-                </div>
-                <div class="min-w-0">
-                    <p class="text-sm font-semibold truncate">${escapeHtml(f.name)}</p>
-                    <p class="text-xs ${f.inGame ? 'text-green-400' : 'text-gray-500'} truncate">${f.inGame ? `Jogando ${escapeHtml(f.inGame)}` : escapeHtml(f.personaStateLabel)}</p>
-                </div>
-            </button>`).join('');
+        renderFriends();
     } catch (err) {
-        feed.innerHTML = '';
+        // Rede/Steam fora do ar: mantém última lista renderizada
+    }
+}
+
+function startFriendsPolling() {
+    if (friendsPollTimer) return;
+    friendsPollTimer = setInterval(() => {
+        if (!document.hidden) loadFriends();
+    }, FRIENDS_POLL_MS);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && friendsPollTimer) loadFriends();
+    });
+}
+
+function stopFriendsPolling() {
+    clearInterval(friendsPollTimer);
+    friendsPollTimer = null;
+}
+
+function isFriendsSidebarCollapsed() {
+    return localStorage.getItem('friendsSidebarCollapsed') === '1';
+}
+
+function applyFriendsSidebarState() {
+    document.getElementById('appShell').classList.toggle('friends-collapsed', isFriendsSidebarCollapsed());
+}
+
+function toggleFriendsSidebar() {
+    const shell = document.getElementById('appShell');
+    if (window.matchMedia('(min-width: 1024px)').matches) {
+        localStorage.setItem('friendsSidebarCollapsed', isFriendsSidebarCollapsed() ? '0' : '1');
+        applyFriendsSidebarState();
+    } else {
+        const open = shell.classList.toggle('friends-open-mobile');
+        document.getElementById('friendsBackdrop').classList.toggle('hidden', !open);
+        document.getElementById('friendsFab').classList.toggle('hidden', open);
     }
 }
 
@@ -655,6 +726,22 @@ document.getElementById('shareListForm').addEventListener('submit', async (e) =>
 
 // --- INTERFACE E NAVEGAÇÃO ---
 
+const TABS = ['biblioteca', 'dashboard', 'noticias', 'listas'];
+
+function switchTab(name) {
+    if (!TABS.includes(name)) name = 'biblioteca';
+    TABS.forEach(t => {
+        document.getElementById(`tab-panel-${t}`).classList.toggle('hidden', t !== name);
+    });
+    document.querySelectorAll('#mainTabs .tab-btn').forEach(btn => {
+        const active = btn.dataset.tab === name;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', active);
+    });
+    localStorage.setItem('activeTab', name);
+    window.scrollTo({ top: 0 });
+}
+
 function filterGames(category) {
     document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('text-red-500', 'font-bold'));
     event.target.classList.add('text-red-500', 'font-bold');
@@ -712,10 +799,13 @@ async function loadSteamUser() {
                     <button onclick="logoutSteam()" class="text-xs text-gray-400 hover:text-red-400 transition">Sair</button>
                 </div>
             `;
+            applyFriendsSidebarState();
+            switchTab(localStorage.getItem('activeTab') || 'biblioteca');
             await loadGames();
             loadNews();
             loadRecentlyPlayed();
             loadFriends();
+            startFriendsPolling();
             loadShareLists();
             importSteamLibrary();
         } else {
@@ -729,6 +819,7 @@ async function loadSteamUser() {
 }
 
 async function logoutSteam() {
+    stopFriendsPolling();
     await fetch('/api/logout', { method: 'POST' });
     loadSteamUser();
 }
